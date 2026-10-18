@@ -1,0 +1,3358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Beach Buggy Rally: Dunas & Resort 3D — Gepiclub Arcade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Outfit:wght@500;700;900&display=swap" rel="stylesheet">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --gepi-red: #E1254B;
+      --gepi-blue: #3894D1;
+      --gepi-gold: #FFD700;
+      --gepi-cyan: #00F0FF;
+      --gepi-sand: #F4D39B;
+      --gepi-dark: #0f172a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0c192c;
+      font-family: 'Outfit', sans-serif;
+      color: #fff;
+    }
+
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Speed Lines Overlay */
+    #speed-lines {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      opacity: 0;
+      transition: opacity 0.18s ease;
+      background:
+        repeating-conic-gradient(
+          from 0deg at 50% 50%,
+          rgba(0, 240, 255, 0.0) 0deg,
+          rgba(0, 240, 255, 0.0) 6deg,
+          rgba(0, 240, 255, 0.22) 6.6deg,
+          rgba(255, 215, 0, 0.14) 7.1deg,
+          rgba(0, 240, 255, 0.0) 8deg
+        );
+      mask-image: radial-gradient(circle at center, transparent 42%, black 85%);
+      -webkit-mask-image: radial-gradient(circle at center, transparent 42%, black 85%);
+    }
+
+    /* HUD */
+    #hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px 22px;
+    }
+
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .stats-cluster {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .pill-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .hud-pill {
+      background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 255, 255, 0.22);
+      border-radius: 999px;
+      padding: 7px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 800;
+      font-size: 1rem;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    .hud-pill span.val {
+      color: var(--gepi-gold);
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1.12rem;
+    }
+
+    .timer-box {
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.78));
+      border: 3px solid var(--gepi-gold);
+      border-radius: 20px;
+      padding: 8px 26px;
+      text-align: center;
+      box-shadow: 0 0 24px rgba(255, 215, 0, 0.35);
+    }
+
+    .timer-label {
+      font-size: 0.68rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #cbd5e1;
+      font-weight: 800;
+    }
+
+    .timer-value {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 2.1rem;
+      line-height: 1.05;
+      color: #fff;
+      text-shadow: 0 3px 10px rgba(0,0,0,0.5);
+    }
+
+    .right-cluster {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+      flex-wrap: wrap;
+    }
+
+    .sector-badge {
+      background: linear-gradient(135deg, var(--gepi-red), var(--gepi-blue));
+      border: 2px solid rgba(255, 255, 255, 0.85);
+      border-radius: 16px;
+      padding: 8px 16px;
+      text-align: right;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    .sector-badge .lbl {
+      font-size: 0.65rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      opacity: 0.9;
+    }
+
+    .sector-badge .name {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1rem;
+      color: var(--gepi-gold);
+    }
+
+    .hud-btn {
+      pointer-events: auto;
+      background: rgba(15, 23, 42, 0.82);
+      color: #fff;
+      border: 2px solid rgba(255, 255, 255, 0.32);
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+
+    .hud-btn:hover {
+      transform: translateY(-2px);
+      border-color: var(--gepi-cyan);
+    }
+
+    .hub-return-btn {
+      background: linear-gradient(135deg, rgba(225, 37, 75, 0.9), rgba(56, 148, 209, 0.9)) !important;
+      border: 1.5px solid rgba(255, 255, 255, 0.6) !important;
+      color: #fff !important;
+      display: inline-flex !important;
+      align-items: center;
+      gap: 6px;
+      font-weight: 800;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    }
+
+    .hub-return-btn:hover {
+      border-color: #ffd700 !important;
+      box-shadow: 0 0 16px rgba(255, 215, 0, 0.6);
+      transform: translateY(-2px);
+    }
+
+    /* Center Checkpoint Banner */
+    #banner-toast {
+      align-self: center;
+      font-family: 'Fredoka', sans-serif;
+      font-size: 2rem;
+      color: var(--gepi-gold);
+      text-shadow: 0 4px 0 var(--gepi-red), 0 8px 24px rgba(0,0,0,0.7);
+      opacity: 0;
+      transform: scale(0.8);
+      transition: opacity 0.22s, transform 0.22s;
+      text-align: center;
+    }
+
+    #banner-toast.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    /* Bottom HUD */
+    .hud-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+    }
+
+    .gauges-center {
+      display: flex;
+      align-items: flex-end;
+      gap: 14px;
+      margin: 0 auto;
+    }
+
+    .nitro-panel {
+      background: rgba(15, 23, 42, 0.84);
+      border: 2px solid rgba(255, 255, 255, 0.24);
+      border-radius: 16px;
+      padding: 10px 14px;
+      width: 220px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    .nitro-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .nitro-head .status {
+      color: var(--gepi-cyan);
+    }
+
+    .nitro-bar-bg {
+      width: 100%;
+      height: 12px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .nitro-bar-fill {
+      height: 100%;
+      width: 65%;
+      background: linear-gradient(90deg, #3894D1, #00F0FF, #ffffff);
+      box-shadow: 0 0 12px #00F0FF;
+      border-radius: 999px;
+      transition: width 0.08s linear;
+    }
+
+    .speedo-box {
+      background: radial-gradient(circle at top, #1e293b, #0f172a);
+      border: 3px solid var(--gepi-red);
+      border-radius: 20px;
+      padding: 10px 18px;
+      min-width: 115px;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(225, 37, 75, 0.35);
+    }
+
+    .speed-val {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 2.15rem;
+      line-height: 1;
+      color: #fff;
+    }
+
+    .speed-unit {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--gepi-gold);
+      letter-spacing: 1.5px;
+    }
+
+    /* Touch Controls */
+    .touch-cluster {
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .touch-btn {
+      width: 62px;
+      height: 62px;
+      border-radius: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.45);
+      background: rgba(15, 23, 42, 0.78);
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 0.72rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+      touch-action: manipulation;
+    }
+
+    .touch-btn:active, .touch-btn.active {
+      transform: scale(0.93);
+      border-color: var(--gepi-gold);
+    }
+
+    .touch-btn.gas {
+      background: linear-gradient(180deg, #22c55e, #15803d);
+    }
+
+    .touch-btn.nitro {
+      background: linear-gradient(180deg, #06b6d4, #0284c7);
+      border-color: var(--gepi-cyan);
+    }
+
+    /* Compass Roses (Island Reference Aesthetic) */
+    .compass-rose {
+      position: fixed;
+      bottom: 16px;
+      width: 68px;
+      height: 68px;
+      pointer-events: none;
+      z-index: 3;
+      opacity: 0.82;
+      filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+    }
+    .compass-rose.left { left: 16px; }
+    .compass-rose.right { right: 16px; }
+
+    /* Modal Screens */
+    .overlay-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      background: radial-gradient(circle at center, rgba(15, 23, 42, 0.12), rgba(15, 23, 42, 0.58));
+      padding: 20px;
+    }
+
+    .overlay-screen.hidden {
+      display: none;
+    }
+
+    .arcade-card {
+      max-width: 560px;
+      width: 100%;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.94));
+      backdrop-filter: blur(10px);
+      border: 3px solid var(--gepi-gold);
+      border-radius: 26px;
+      padding: 22px 26px;
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.65);
+    }
+
+    .brand-tag {
+      display: inline-block;
+      background: var(--gepi-red);
+      color: #fff;
+      font-weight: 900;
+      font-size: 0.72rem;
+      letter-spacing: 2px;
+      padding: 4px 14px;
+      border-radius: 999px;
+      margin-bottom: 8px;
+    }
+
+    .game-title {
+      font-family: 'Fredoka', sans-serif;
+      font-size: clamp(1.55rem, 3.6vw, 2.2rem);
+      color: var(--gepi-gold);
+      text-shadow: 0 4px 0 var(--gepi-red);
+      line-height: 1.08;
+      margin-bottom: 6px;
+    }
+
+    .game-sub {
+      color: #e2e8f0;
+      font-size: 0.88rem;
+      margin-bottom: 14px;
+    }
+
+    .diff-selector {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .diff-btn {
+      flex: 1;
+      padding: 9px 10px;
+      border-radius: 14px;
+      border: 2px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .diff-btn.active {
+      background: var(--gepi-blue);
+      border-color: var(--gepi-gold);
+      box-shadow: 0 0 15px rgba(56, 148, 209, 0.6);
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      text-align: left;
+      background: rgba(0,0,0,0.28);
+      padding: 10px 14px;
+      border-radius: 14px;
+      margin-bottom: 16px;
+      font-size: 0.8rem;
+    }
+
+    .controls-grid div strong {
+      color: var(--gepi-cyan);
+    }
+
+    .cta-btn {
+      width: 100%;
+      padding: 13px 22px;
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1.35rem;
+      color: #0f172a;
+      background: linear-gradient(180deg, #FFE55C, #FFB800);
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #b45309, 0 12px 24px rgba(0,0,0,0.45);
+      transition: transform 0.12s;
+    }
+
+    .cta-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .cta-btn:active {
+      transform: translateY(3px);
+    }
+
+    .stars-row {
+      font-size: 2.4rem;
+      margin: 8px 0;
+      letter-spacing: 8px;
+    }
+
+    @media (max-width: 760px) {
+      .compass-rose { display: none; }
+      .nitro-panel { width: 150px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div id="speed-lines"></div>
+
+  <!-- Decorative Nautical Compass Roses matching reference map -->
+  <svg class="compass-rose left" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="44" fill="rgba(15,23,42,0.75)" stroke="#F4D39B" stroke-width="4"/>
+    <polygon points="50,10 58,42 90,50 58,58 50,90 42,58 10,50 42,42" fill="#F4D39B"/>
+    <polygon points="50,18 54,46 82,50 54,54 50,82 46,54 18,50 46,46" fill="#E1254B"/>
+    <circle cx="50" cy="50" r="6" fill="#FFD700"/>
+  </svg>
+  <svg class="compass-rose right" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="44" fill="rgba(15,23,42,0.75)" stroke="#F4D39B" stroke-width="4"/>
+    <text x="50" y="19" text-anchor="middle" fill="#FFD700" font-size="12" font-weight="900">N</text>
+    <polygon points="50,22 57,43 78,50 57,57 50,78 43,57 22,50 43,43" fill="#3894D1"/>
+    <circle cx="50" cy="50" r="6" fill="#FFD700"/>
+  </svg>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-top">
+      <div class="stats-cluster">
+        <div class="pill-row">
+          <div class="hud-pill">🏆 <span class="val" id="hud-score">0</span></div>
+          <div class="hud-pill">🪙 <span class="val" id="hud-coins">0</span></div>
+          <div class="hud-pill">🧰 <span class="val" id="hud-chests">0</span></div>
+        </div>
+        <div class="pill-row">
+          <div class="hud-pill">🏁 VUELTA <span class="val" id="hud-lap">1/2</span></div>
+          <div class="hud-pill">🦎 POS <span class="val" id="hud-pos">1º/4</span></div>
+        </div>
+      </div>
+
+      <div class="timer-box">
+        <div class="timer-label">CONTRARRELOJ</div>
+        <div class="timer-value" id="hud-time">95.0</div>
+      </div>
+
+      <div class="right-cluster">
+        <button class="hud-btn hub-return-btn" id="btn-return-hub" title="Volver al Menú Principal de Juegos" onclick="window.location.href='../index.html'">
+          <span>🏝️ Menú Juegos</span>
+        </button>
+        <div class="sector-badge">
+          <div class="lbl">SECTOR ISLA</div>
+          <div class="name" id="hud-sector">🏖️ START / FINISH BEACH</div>
+        </div>
+        <button class="hud-btn" id="btn-camera" title="Cambiar Vista Isla / Carrera (Tecla V)">🏎️ VISTA KART</button>
+        <button class="hud-btn" id="btn-mute" title="Audio">🔊</button>
+      </div>
+    </div>
+
+    <div id="banner-toast">¡CHECKPOINT +12s!</div>
+
+    <div class="hud-bottom">
+      <div class="touch-cluster">
+        <button class="touch-btn" id="t-left">◀<span>IZQ</span></button>
+        <button class="touch-btn" id="t-right">▶<span>DER</span></button>
+      </div>
+
+      <div class="gauges-center">
+        <div class="nitro-panel">
+          <div class="nitro-head">
+            <span>⚡ NITRO BOOST</span>
+            <span class="status" id="hud-nitro-txt">LISTO [ESPACIO]</span>
+          </div>
+          <div class="nitro-bar-bg">
+            <div class="nitro-bar-fill" id="hud-nitro-bar"></div>
+          </div>
+        </div>
+
+        <div class="speedo-box">
+          <div class="speed-val" id="hud-speed">0</div>
+          <div class="speed-unit">KM/H</div>
+        </div>
+      </div>
+
+      <div class="touch-cluster">
+        <button class="touch-btn nitro" id="t-nitro">⚡<span>NITRO</span></button>
+        <button class="touch-btn" id="t-drift">💨<span>DRIFT</span></button>
+        <button class="touch-btn" id="t-brake">▼<span>FRENO</span></button>
+        <button class="touch-btn gas" id="t-gas">▲<span>GAS</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- START MENU -->
+  <div class="overlay-screen" id="start-modal">
+    <div class="arcade-card">
+      <div class="brand-tag">GEPICLUB ARCADE • JUEGO 2</div>
+      <h1 class="game-title">BEACH BUGGY RALLY: DUNAS & RESORT 3D</h1>
+      <p class="game-sub">Isla Volcánica Caribeña: Start Beach • Seaside Village • Wooden Bridge • Jungle Pass • Volcano Cave</p>
+
+      <div class="diff-selector">
+        <button class="diff-btn" data-diff="easy">🌴 FÁCIL (115s)</button>
+        <button class="diff-btn active" data-diff="normal">🔥 NORMAL (95s)</button>
+        <button class="diff-btn" data-diff="hard">⚡ DIFÍCIL (78s)</button>
+      </div>
+
+      <div class="controls-grid">
+        <div><strong>W / ▲</strong> Acelerar</div>
+        <div><strong>S / ▼</strong> Freno / Reversa</div>
+        <div><strong>A D / ◄ ►</strong> Girar Buggy #7</div>
+        <div><strong>SHIFT</strong> Derrapar (Recarga Nitro)</div>
+        <div><strong>ESPACIO</strong> Activar Nitro Boost</div>
+        <div><strong>TECLA V</strong> Vista Diorama Isla / Kart</div>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:8px;">
+        <button class="cta-btn" id="btn-start-race" style="flex:2">¡A CORRER!</button>
+        <button class="cta-btn" id="btn-return-portal" style="flex:1; background:rgba(255,255,255,0.14); color:#fff; border:1px solid rgba(255,255,255,0.3); box-shadow:none; font-size:1.05rem;" onclick="window.location.href='../index.html'">🏠 MENÚ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- END MENU -->
+  <div class="overlay-screen hidden" id="end-modal">
+    <div class="arcade-card">
+      <div class="brand-tag" id="end-badge">CARRERA FINALIZADA</div>
+      <h1 class="game-title" id="end-title">¡META ALCANZADA!</h1>
+      <div class="stars-row" id="end-stars">⭐⭐⭐</div>
+      <p class="game-sub" id="end-summary">Puntuación Total: 0</p>
+      <div style="display:flex; gap:12px; margin-top:16px;">
+        <button class="cta-btn" id="btn-restart-race" style="flex:1">🔄 REINTENTAR</button>
+        <button class="cta-btn" id="btn-end-portal" style="flex:1; background:rgba(255,255,255,0.14); color:#fff; border:1px solid rgba(255,255,255,0.3); box-shadow:none; font-size:1.1rem;" onclick="window.location.href='../index.html'">🏠 MENÚ JUEGOS</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+    // =========================================================================
+    // 1. PROCEDURAL WEB AUDIO SYNTHESIZER (ZERO EXTERNAL ASSETS)
+    // =========================================================================
+    class ArcadeAudio {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.engineOsc = null;
+        this.engineSub = null;
+        this.engineGain = null;
+        this.driftGain = null;
+      }
+
+      init() {
+        if (this.ctx) {
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+          return;
+        }
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        this.ctx = new AudioCtx();
+
+        // Engine Continuous Synth
+        this.engineOsc = this.ctx.createOscillator();
+        this.engineSub = this.ctx.createOscillator();
+        this.engineGain = this.ctx.createGain();
+
+        this.engineOsc.type = 'sawtooth';
+        this.engineSub.type = 'triangle';
+        this.engineOsc.frequency.value = 58;
+        this.engineSub.frequency.value = 29;
+        this.engineGain.gain.value = 0.0001;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 360;
+
+        this.engineOsc.connect(filter);
+        this.engineSub.connect(filter);
+        filter.connect(this.engineGain);
+        this.engineGain.connect(this.ctx.destination);
+
+        this.engineOsc.start();
+        this.engineSub.start();
+
+        // Sand Drift Noise
+        const bufferSize = this.ctx.sampleRate * 1.5;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+
+        const whiteNoise = this.ctx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+        whiteNoise.loop = true;
+
+        const band = this.ctx.createBiquadFilter();
+        band.type = 'bandpass';
+        band.frequency.value = 1150;
+        band.Q.value = 2.2;
+
+        this.driftGain = this.ctx.createGain();
+        this.driftGain.gain.value = 0.0001;
+
+        whiteNoise.connect(band);
+        band.connect(this.driftGain);
+        this.driftGain.connect(this.ctx.destination);
+        whiteNoise.start();
+      }
+
+      updateEngine(speedRatio, drifting, active) {
+        if (!this.ctx || this.muted || !active) {
+          if (this.engineGain) this.engineGain.gain.setTargetAtTime(0.0001, this.ctx ? this.ctx.currentTime : 0, 0.08);
+          if (this.driftGain) this.driftGain.gain.setTargetAtTime(0.0001, this.ctx ? this.ctx.currentTime : 0, 0.08);
+          return;
+        }
+        const now = this.ctx.currentTime;
+        const baseFreq = 52 + speedRatio * 145;
+        this.engineOsc.frequency.setTargetAtTime(baseFreq, now, 0.05);
+        this.engineSub.frequency.setTargetAtTime(baseFreq * 0.5, now, 0.05);
+        this.engineGain.gain.setTargetAtTime(0.045 + speedRatio * 0.05, now, 0.06);
+        this.driftGain.gain.setTargetAtTime(drifting && speedRatio > 0.25 ? 0.055 : 0.0001, now, 0.06);
+      }
+
+      playCoin() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(987.77, now);
+        osc.frequency.setValueAtTime(1318.51, now + 0.07);
+        gain.gain.setValueAtTime(0.14, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.29);
+      }
+
+      playChest() {
+        if (!this.ctx || this.muted) return;
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((n, idx) => {
+          const now = this.ctx.currentTime + idx * 0.06;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(n, now);
+          gain.gain.setValueAtTime(0.14, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        });
+      }
+
+      playNitro() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(520, now + 0.38);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.44);
+      }
+
+      playImpact() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(110, now);
+        osc.frequency.exponentialRampToValueAtTime(35, now + 0.22);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      }
+    }
+
+    const audio = new ArcadeAudio();
+
+    // =========================================================================
+    // 2. PROCEDURAL AAA TEXTURE GENERATOR (RICH EARTH TONES & ARCHITECTURAL FACADES)
+    // =========================================================================
+    function createTrackAtlasTextures() {
+      const c = document.createElement('canvas');
+      c.width = 1024;
+      c.height = 1024;
+      const ctx = c.getContext('2d');
+
+      const b = document.createElement('canvas');
+      b.width = 1024;
+      b.height = 1024;
+      const bctx = b.getContext('2d');
+
+      // 1) MARIO KART DIRT & BEACH SAND ROAD (Terracotta-ochre clay, herringbone tire ruts & sunset curbs)
+      const sandGrad = ctx.createLinearGradient(0, 0, 256, 0);
+      sandGrad.addColorStop(0.00, '#7c4a21'); // Rich sienna shoulder
+      sandGrad.addColorStop(0.08, '#9c6232'); // Compacted terracotta edge
+      sandGrad.addColorStop(0.28, '#ba7c45'); // Warm clay track
+      sandGrad.addColorStop(0.50, '#d1975c'); // Sunlit golden-ochre crown
+      sandGrad.addColorStop(0.72, '#ba7c45'); // Warm clay track
+      sandGrad.addColorStop(0.92, '#9c6232'); // Compacted terracotta edge
+      sandGrad.addColorStop(1.00, '#7c4a21'); // Rich sienna shoulder
+      ctx.fillStyle = sandGrad;
+      ctx.fillRect(0, 0, 256, 1024);
+
+      // Stylized Mario Kart Sunset Beach Curbstones (Yellow/Orange & White bevelled blocks on outer edge)
+      for (let y = 0; y < 1024; y += 64) {
+        const isWarm = (y / 64) % 2 === 0;
+        ctx.fillStyle = isWarm ? '#ff7b00' : '#fff8e7';
+        ctx.fillRect(2, y, 14, 62);
+        ctx.fillRect(240, y, 14, 62);
+        ctx.fillStyle = 'rgba(0,0,0,0.22)';
+        ctx.fillRect(2, y + 58, 14, 6);
+        ctx.fillRect(240, y + 58, 14, 6);
+      }
+
+      // Organic terracotta & golden sand mottling + pebbles
+      for (let i = 0; i < 550; i++) {
+        const rx = 20 + Math.random() * 216;
+        const ry = Math.random() * 1024;
+        const rw = 6 + Math.random() * 20;
+        const rh = 14 + Math.random() * 44;
+        ctx.fillStyle = i % 2 === 0 ? 'rgba(130, 78, 34, 0.16)' : 'rgba(245, 200, 125, 0.15)';
+        ctx.beginPath();
+        ctx.ellipse(rx, ry, rw, rh, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Herringbone Kart Tire Tread Tracks
+      ctx.strokeStyle = 'rgba(98, 56, 22, 0.36)';
+      ctx.lineWidth = 20;
+      ctx.beginPath();
+      ctx.moveTo(78, 0); ctx.lineTo(78, 1024);
+      ctx.moveTo(178, 0); ctx.lineTo(178, 1024);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(72, 40, 14, 0.28)';
+      ctx.lineWidth = 3;
+      for (let y = 0; y < 1024; y += 16) {
+        [78, 178].forEach(tx => {
+          ctx.beginPath();
+          ctx.moveTo(tx - 10, y);
+          ctx.lineTo(tx, y + 6);
+          ctx.lineTo(tx + 10, y);
+          ctx.stroke();
+        });
+      }
+
+      // 2) SEASIDE VILLAGE MARIO KART ASPHALT (Crisp Red & White Racing Pianos & Aggregate)
+      const asphGrad = ctx.createLinearGradient(256, 0, 512, 0);
+      asphGrad.addColorStop(0, '#232936');
+      asphGrad.addColorStop(0.5, '#333b4d');
+      asphGrad.addColorStop(1, '#232936');
+      ctx.fillStyle = asphGrad;
+      ctx.fillRect(256, 0, 256, 1024);
+
+      // Red & White Mario Kart Bevelled Curbstones + Yellow Racing Lines
+      for (let y = 0; y < 1024; y += 64) {
+        ctx.fillStyle = (y / 64) % 2 === 0 ? '#E1254B' : '#ffffff';
+        ctx.fillRect(256, y, 18, 64);
+        ctx.fillRect(494, y, 18, 64);
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillRect(256, y + 60, 18, 4);
+        ctx.fillRect(494, y + 60, 18, 4);
+      }
+      ctx.fillStyle = '#FFD700';
+      ctx.fillRect(278, 0, 5, 1024);
+      ctx.fillRect(485, 0, 5, 1024);
+
+      // Longitudinal center dashed line
+      ctx.fillStyle = '#ffffff';
+      for (let y = 16; y < 1024; y += 96) {
+        ctx.fillRect(378, y, 12, 52);
+      }
+
+      // 3) WOODEN SUSPENSION BRIDGE PLANKS (Hand-painted grain, bevels & iron bolts)
+      ctx.fillStyle = '#4a2a0f';
+      ctx.fillRect(512, 0, 256, 1024);
+      for (let y = 0; y < 1024; y += 28) {
+        const even = (y / 28) % 2 === 0;
+        ctx.fillStyle = even ? '#995f2b' : '#824e20';
+        ctx.fillRect(516, y + 3, 248, 23);
+        // Plank top bevel highlight
+        ctx.fillStyle = 'rgba(255, 220, 170, 0.22)';
+        ctx.fillRect(516, y + 3, 248, 3);
+        // Wood grain streaks
+        ctx.fillStyle = 'rgba(60, 30, 8, 0.22)';
+        ctx.fillRect(524, y + 11, 230, 2);
+        ctx.fillRect(540, y + 18, 190, 2);
+        // Gap between planks
+        ctx.fillStyle = '#261405';
+        ctx.fillRect(512, y, 256, 3);
+        // Metallic bolt heads
+        ctx.fillStyle = '#cbd5e1';
+        ctx.beginPath();
+        ctx.arc(528, y + 14, 3.5, 0, Math.PI * 2);
+        ctx.arc(748, y + 14, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 4) VOLCANO CAVE BASALT & GLOWING MAGMA RIM
+      const caveGrad = ctx.createLinearGradient(768, 0, 1024, 0);
+      caveGrad.addColorStop(0, '#9a3412');
+      caveGrad.addColorStop(0.14, '#3a302d');
+      caveGrad.addColorStop(0.5, '#4f423e');
+      caveGrad.addColorStop(0.86, '#3a302d');
+      caveGrad.addColorStop(1, '#9a3412');
+      ctx.fillStyle = caveGrad;
+      ctx.fillRect(768, 0, 256, 1024);
+
+      ctx.strokeStyle = '#ff6b00';
+      ctx.lineWidth = 12;
+      ctx.beginPath();
+      ctx.moveTo(780, 0); ctx.lineTo(780, 1024);
+      ctx.moveTo(1012, 0); ctx.lineTo(1012, 1024);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#fef08a';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(780, 0); ctx.lineTo(780, 1024);
+      ctx.moveTo(1012, 0); ctx.lineTo(1012, 1024);
+      ctx.stroke();
+
+      // High-frequency pebble & soil bump map
+      bctx.fillStyle = '#808080';
+      bctx.fillRect(0, 0, 1024, 1024);
+      for (let i = 0; i < 24000; i++) {
+        const x = Math.random() * 1024;
+        const y = Math.random() * 1024;
+        const v = Math.random() > 0.5 ? 235 : 25;
+        ctx.fillStyle = `rgba(${v},${v * 0.85},${v * 0.65},0.04)`;
+        ctx.fillRect(x, y, 3, 3);
+        bctx.fillStyle = `rgba(${v},${v},${v},0.20)`;
+        bctx.fillRect(x, y, 3, 3);
+      }
+
+      const map = new THREE.CanvasTexture(c);
+      map.wrapS = THREE.ClampToEdgeWrapping;
+      map.wrapT = THREE.RepeatWrapping;
+      map.anisotropy = 8;
+
+      const bump = new THREE.CanvasTexture(b);
+      bump.wrapS = THREE.ClampToEdgeWrapping;
+      bump.wrapT = THREE.RepeatWrapping;
+
+      // Dedicated seamless RepeatWrapping micro-bump for the 480m island terrain
+      const tb = document.createElement('canvas');
+      tb.width = 256;
+      tb.height = 256;
+      const tbctx = tb.getContext('2d');
+      tbctx.fillStyle = '#808080';
+      tbctx.fillRect(0, 0, 256, 256);
+      for (let i = 0; i < 6000; i++) {
+        const x = Math.random() * 256;
+        const y = Math.random() * 256;
+        const v = Math.random() > 0.5 ? 225 : 35;
+        tbctx.fillStyle = `rgba(${v},${v},${v},0.22)`;
+        tbctx.fillRect(x, y, 2, 2);
+      }
+      const terrainBump = new THREE.CanvasTexture(tb);
+      terrainBump.wrapS = THREE.RepeatWrapping;
+      terrainBump.wrapT = THREE.RepeatWrapping;
+      terrainBump.repeat.set(36, 36);
+
+      return { map, bump, terrainBump };
+    }
+
+    // Procedural Architectural Facade Texture for Seaside Village Buildings & Shops
+    function createBuildingFacadeTexture(baseHex, trimHex, shopTitle, awningHex) {
+      const c = document.createElement('canvas');
+      c.width = 512;
+      c.height = 512;
+      const ctx = c.getContext('2d');
+
+      ctx.fillStyle = baseHex;
+      ctx.fillRect(0, 0, 512, 512);
+
+      // Subtle stucco noise
+      for (let i = 0; i < 2500; i++) {
+        ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+        ctx.fillRect(Math.random() * 512, Math.random() * 512, 4, 4);
+      }
+
+      // Horizontal floor cornices
+      ctx.fillStyle = trimHex;
+      [18, 165, 330, 492].forEach(y => {
+        ctx.fillRect(0, y, 512, 14);
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.fillRect(0, y + 14, 512, 5);
+        ctx.fillStyle = trimHex;
+      });
+
+      // Upper floors windows with shutters, white frames, glass reflection & flower boxes
+      const winY = [52, 200];
+      const winX = [56, 206, 356];
+      winY.forEach(wy => {
+        winX.forEach(wx => {
+          ctx.fillStyle = awningHex;
+          ctx.fillRect(wx - 16, wy + 4, 14, 86);
+          ctx.fillRect(wx + 102, wy + 4, 14, 86);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(wx - 4, wy - 4, 108, 96);
+
+          const gGrad = ctx.createLinearGradient(wx, wy, wx + 96, wy + 88);
+          gGrad.addColorStop(0, '#0f172a');
+          gGrad.addColorStop(0.45, '#1e3a5f');
+          gGrad.addColorStop(0.55, '#3894D1');
+          gGrad.addColorStop(1, '#0f172a');
+          ctx.fillStyle = gGrad;
+          ctx.fillRect(wx + 4, wy + 4, 92, 80);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(wx + 48, wy + 4, 4, 80);
+          ctx.fillRect(wx + 4, wy + 42, 92, 4);
+
+          ctx.fillStyle = '#7c4d25';
+          ctx.fillRect(wx - 6, wy + 86, 112, 12);
+          ctx.fillStyle = '#22c55e';
+          ctx.fillRect(wx, wy + 78, 100, 10);
+        });
+      });
+
+      // Ground Floor Commercial Shopfront & Signboard
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(28, 352, 456, 38);
+      ctx.strokeStyle = '#FFD700';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(28, 352, 456, 38);
+
+      ctx.fillStyle = '#FFD700';
+      ctx.font = '900 24px "Fredoka", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(shopTitle, 256, 372);
+
+      // Shop Display Windows & Entrance Door
+      ctx.fillStyle = '#fffbeb';
+      ctx.fillRect(36, 402, 155, 92);
+      ctx.fillRect(320, 402, 155, 92);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(42, 408, 143, 80);
+      ctx.fillRect(326, 408, 143, 80);
+
+      // Center Wooden Shop Door
+      ctx.fillStyle = '#7c4d25';
+      ctx.fillRect(216, 402, 80, 104);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(226, 412, 60, 44);
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.anisotropy = 8;
+      return tex;
+    }
+
+    function createCheckeredBannerTexture() {
+      const c = document.createElement('canvas');
+      c.width = 512;
+      c.height = 128;
+      const ctx = c.getContext('2d');
+      const cols = 16, rows = 4;
+      const cw = c.width / cols, ch = c.height / rows;
+      for (let r = 0; r < rows; r++) {
+        for (let col = 0; col < cols; col++) {
+          ctx.fillStyle = (r + col) % 2 === 0 ? '#ffffff' : '#111827';
+          ctx.fillRect(col * cw, r * ch, cw, ch);
+        }
+      }
+      const tex = new THREE.CanvasTexture(c);
+      tex.anisotropy = 8;
+      return tex;
+    }
+
+    function createWoodenSignTexture(text, subColor = '#FFD700') {
+      const c = document.createElement('canvas');
+      c.width = 1024;
+      c.height = 256;
+      const ctx = c.getContext('2d');
+
+      const grad = ctx.createLinearGradient(0, 0, 0, 256);
+      grad.addColorStop(0, '#6e421c');
+      grad.addColorStop(0.5, '#855225');
+      grad.addColorStop(1, '#4f2e11');
+      ctx.fillStyle = grad;
+      ctx.fillRect(8, 8, 1008, 240);
+
+      ctx.strokeStyle = '#3b210b';
+      ctx.lineWidth = 12;
+      ctx.strokeRect(8, 8, 1008, 240);
+
+      ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+      ctx.lineWidth = 4;
+      for (let y = 64; y < 256; y += 64) {
+        ctx.beginPath();
+        ctx.moveTo(12, y);
+        ctx.lineTo(1012, y);
+        ctx.stroke();
+      }
+
+      ctx.font = '900 108px "Fredoka", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 18;
+      ctx.strokeStyle = '#271506';
+      ctx.strokeText(text, 512, 132);
+      ctx.fillStyle = subColor;
+      ctx.fillText(text, 512, 132);
+
+      return new THREE.CanvasTexture(c);
+    }
+
+    function createNumberDecalTexture(numStr, bg = '#ffffff', fg = '#111827') {
+      const c = document.createElement('canvas');
+      c.width = 256;
+      c.height = 256;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = bg;
+      ctx.beginPath();
+      ctx.arc(128, 128, 116, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = 12;
+      ctx.strokeStyle = '#111827';
+      ctx.stroke();
+      ctx.fillStyle = fg;
+      ctx.font = '900 150px "Fredoka", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(numStr, 128, 136);
+      return new THREE.CanvasTexture(c);
+    }
+
+    // =========================================================================
+    // 3. SCENE, CAMERA & RENDERER SETUP
+    // =========================================================================
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x3b9ae1);
+    scene.fog = new THREE.FogExp2(0x6eb8f0, 0.00075);
+
+    const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.5, 1600);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.12;
+    container.appendChild(renderer.domElement);
+
+    // Balanced Caribbean Sun, Ambient & Hemisphere Lighting (Warm bright shadows, zero pitch-black interiors)
+    const ambientLight = new THREE.AmbientLight(0xffeedd, 0.52);
+    scene.add(ambientLight);
+
+    const hemiLight = new THREE.HemisphereLight(0xdff2ff, 0xa87e52, 0.92);
+    scene.add(hemiLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfff0cc, 1.72);
+    sunLight.position.set(185, 250, 145);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.camera.near = 20;
+    sunLight.shadow.camera.far = 750;
+    const d = 260;
+    sunLight.shadow.camera.left = -d;
+    sunLight.shadow.camera.right = d;
+    sunLight.shadow.camera.top = d;
+    sunLight.shadow.camera.bottom = -d;
+    sunLight.shadow.bias = -0.0004;
+    scene.add(sunLight);
+
+    // Mario Kart 8 Style Multi-Tier Sky Dome with Volumetric FBM Cumulus Clouds & Sun Corona
+    const skyUniforms = {
+      uTime: { value: 0.0 },
+      uSunDir: { value: new THREE.Vector3(320, 290, -340).normalize() }
+    };
+    const skyDomeGeo = new THREE.SphereGeometry(1350, 40, 28);
+    const skyDomeMat = new THREE.ShaderMaterial({
+      side: THREE.BackSide,
+      depthWrite: false,
+      uniforms: skyUniforms,
+      vertexShader: `
+        varying vec3 vWorldPos;
+        void main() {
+          vec4 wp = modelMatrix * vec4(position, 1.0);
+          vWorldPos = wp.xyz;
+          gl_Position = projectionMatrix * viewMatrix * wp;
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec3 uSunDir;
+        varying vec3 vWorldPos;
+
+        float hash2(vec2 p) {
+          p = fract(p * vec2(123.34, 456.21));
+          p += dot(p, p + 45.32);
+          return fract(p.x * p.y);
+        }
+
+        float noise2(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          return mix(
+            mix(hash2(i), hash2(i + vec2(1.0, 0.0)), f.x),
+            mix(hash2(i + vec2(0.0, 1.0)), hash2(i + vec2(1.0, 1.0)), f.x),
+            f.y
+          );
+        }
+
+        float fbmSky(vec2 p) {
+          float v = 0.0;
+          float a = 0.52;
+          mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
+          for (int i = 0; i < 4; i++) {
+            v += a * noise2(p);
+            p = rot * p * 2.08;
+            a *= 0.5;
+          }
+          return v;
+        }
+
+        void main() {
+          vec3 dir = normalize(vWorldPos);
+          float h = clamp(dir.y, 0.0, 1.0);
+
+          // Vibrant Nintendo Mario Kart 8 Sky Gradient (Deep Cobalt -> Azure -> Cyan -> Warm Horizon)
+          vec3 colZenith  = vec3(0.03, 0.24, 0.65);
+          vec3 colMidSky  = vec3(0.10, 0.52, 0.92);
+          vec3 colLowSky  = vec3(0.32, 0.78, 0.98);
+          vec3 colHorizon = vec3(0.68, 0.93, 1.00);
+
+          vec3 sky = mix(colHorizon, colLowSky, smoothstep(0.0, 0.14, h));
+          sky = mix(sky, colMidSky, smoothstep(0.14, 0.46, h));
+          sky = mix(sky, colZenith, smoothstep(0.46, 0.95, h));
+
+          // Sun Disc & Golden Corona Halo
+          vec3 sDir = normalize(uSunDir);
+          float sunDot = max(0.0, dot(dir, sDir));
+          float sunDisc = smoothstep(0.9985, 0.9996, sunDot);
+          float sunCorona = pow(sunDot, 96.0) * 0.45 + pow(sunDot, 16.0) * 0.14;
+          sky += vec3(1.0, 0.95, 0.78) * (sunDisc * 1.4 + sunCorona);
+
+          // Stylized Cumulus Cotton Clouds in Upper Hemisphere
+          if (h > 0.04) {
+            vec2 cloudUV = (dir.xz / (h + 0.18)) * 1.65 + vec2(uTime * 0.012, -uTime * 0.008);
+            float nBase = fbmSky(cloudUV);
+            float nTop  = fbmSky(cloudUV * 1.8 + vec2(0.35, -0.42));
+            float cloudMask = smoothstep(0.50, 0.76, nBase) * smoothstep(0.04, 0.20, h) * (1.0 - smoothstep(0.68, 0.95, h));
+
+            vec3 cloudShadow = vec3(0.76, 0.88, 0.99);
+            vec3 cloudLit    = vec3(1.00, 0.99, 0.96);
+            vec3 cloudCol = mix(cloudShadow, cloudLit, smoothstep(0.38, 0.72, nTop));
+            sky = mix(sky, cloudCol, cloudMask * 0.88);
+          }
+
+          gl_FragColor = vec4(sky, 1.0);
+        }
+      `
+    });
+    const skyDomeMesh = new THREE.Mesh(skyDomeGeo, skyDomeMat);
+    scene.add(skyDomeMesh);
+
+    const cloudGroup = new THREE.Group();
+    const cloudMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: 0xdbeafe,
+      emissiveIntensity: 0.18,
+      roughness: 0.85,
+      metalness: 0.0
+    });
+    const sharedPuffGeo = new THREE.SphereGeometry(1, 12, 12);
+    for (let i = 0; i < 24; i++) {
+      const cl = new THREE.Group();
+      const puffs = 4 + (i % 3);
+      for (let p = 0; p < puffs; p++) {
+        const r = 9 + Math.random() * 10;
+        const puff = new THREE.Mesh(sharedPuffGeo, cloudMat);
+        puff.position.set((p - puffs * 0.5) * 11, Math.sin(p) * 3, (Math.random() - 0.5) * 8);
+        puff.scale.set(r * 1.3, r * 0.72, r);
+        cl.add(puff);
+      }
+      const ang = (i / 24) * Math.PI * 2;
+      const rad = 310 + (i % 3) * 75;
+      cl.position.set(Math.cos(ang) * rad, 82 + (i % 5) * 18, Math.sin(ang) * rad);
+      cl.rotation.y = ang + Math.PI * 0.5;
+      cloudGroup.add(cl);
+    }
+    scene.add(cloudGroup);
+
+    // =========================================================================
+    // 4. CLOSED SPLINE CIRCUIT MATCHING REFERENCE ISLAND TOPOLOGY (OVERPASS + CANYON)
+    // =========================================================================
+    const TRACK_HALF_WIDTH = 10.5;
+    const TRACK_SAMPLES = 800;
+
+    const controlPoints = [
+      new THREE.Vector3(-42, 6.2, 138),   // 0: Start/Finish Arch
+      new THREE.Vector3(-12, 6.0, 162),   // 1: South Beach Turn
+      new THREE.Vector3(46,  6.2, 152),   // 2: Beach to Village Transition
+      new THREE.Vector3(96,  9.5, 112),   // 3: Seaside Village Lower Street
+      new THREE.Vector3(122, 14.0, 48),   // 4: Seaside Village Upper Curve
+      new THREE.Vector3(92,  19.0, -8),   // 5: Village Exit / Bridge Approach
+      new THREE.Vector3(24,  22.5, -18),  // 6: Wooden Bridge East End (OVERPASS)
+      new THREE.Vector3(-24, 22.5, -18),  // 7: Wooden Bridge West End (OVERPASS)
+      new THREE.Vector3(-88, 22.0, -12),  // 8: Jungle Pass Outer Hairpin
+      new THREE.Vector3(-125,24.0, -52),  // 9: Jungle Pass S-Curve West
+      new THREE.Vector3(-82, 27.5, -96),  // 10: Jungle Pass Upper Climb
+      new THREE.Vector3(-52, 31.0, -142), // 11: Volcano Cave West Mouth Entrance
+      new THREE.Vector3(0,   32.5, -165), // 12: Inside Volcano Lava Cavern
+      new THREE.Vector3(58,  29.5, -135), // 13: Volcano Cave East Mouth Exit
+      new THREE.Vector3(52,  19.0, -76),  // 14: Upper Canyon Descent
+      new THREE.Vector3(2,   7.2,  -18),  // 15: Canyon Underpass (DIRECTLY UNDER WOODEN BRIDGE!)
+      new THREE.Vector3(-42, 6.8,  45),   // 16: Beach Palms Straight
+      new THREE.Vector3(-76, 6.4,  98)    // 17: Final Beach Corner before Start/Finish
+    ];
+
+    const trackCurve = new THREE.CatmullRomCurve3(controlPoints, true, 'catmullrom', 0.45);
+    const trackSamples = [];
+
+    function getSurfaceTypeAtU(u) {
+      if (u >= 0.14 && u <= 0.31) return 1; // Seaside Village Asphalt
+      if (u >= 0.34 && u <= 0.43) return 2; // Wooden Bridge Overpass
+      if (u >= 0.61 && u <= 0.77) return 3; // Volcano Cave
+      return 0; // Beach & Jungle Earth/Sand
+    }
+
+    function getSectorNameAtU(u) {
+      if (u >= 0.13 && u < 0.32) return '🏘️ SEASIDE VILLAGE';
+      if (u >= 0.32 && u < 0.44) return '🌉 WOODEN BRIDGE PASS';
+      if (u >= 0.44 && u < 0.61) return '🌴 JUNGLE PASS';
+      if (u >= 0.61 && u < 0.78) return '🌋 VOLCANO CAVE';
+      return '🏖️ START / FINISH BEACH';
+    }
+
+    for (let i = 0; i < TRACK_SAMPLES; i++) {
+      const u = i / TRACK_SAMPLES;
+      const point = trackCurve.getPointAt(u);
+      const tangent = trackCurve.getTangentAt(u).normalize();
+      const right = new THREE.Vector3().crossVectors(tangent, new THREE.Vector3(0, 1, 0)).normalize();
+      trackSamples.push({ u, point, tangent, right, surface: getSurfaceTypeAtU(u) });
+    }
+
+    function getClosestTrackSample(pos, currentU = null) {
+      let bestIdx = 0;
+      let bestDistSq = Infinity;
+      for (let i = 0; i < TRACK_SAMPLES; i++) {
+        const s = trackSamples[i];
+        if (currentU !== null) {
+          let du = Math.abs(s.u - currentU);
+          if (du > 0.5) du = 1.0 - du;
+          if (du > 0.12) continue;
+        }
+        const dx = pos.x - s.point.x;
+        const dz = pos.z - s.point.z;
+        const dy = (pos.y - s.point.y) * 1.8;
+        const dSq = dx * dx + dz * dz + dy * dy;
+        if (dSq < bestDistSq) {
+          bestDistSq = dSq;
+          bestIdx = i;
+        }
+      }
+      return trackSamples[bestIdx];
+    }
+
+    function isPointClearOfTrack(x, z, clearance = TRACK_HALF_WIDTH + 5.8) {
+      const cSq = clearance * clearance;
+      for (let i = 0; i < TRACK_SAMPLES; i += 2) {
+        const p = trackSamples[i].point;
+        const dx = x - p.x;
+        const dz = z - p.z;
+        if (dx * dx + dz * dz < cSq) return false;
+      }
+      return true;
+    }
+
+    // =========================================================================
+    // 5. CONTINUOUS RIBBON TRACK MESH + CURBS + WOODEN SUSPENSION BRIDGE
+    // =========================================================================
+    const trackTextures = createTrackAtlasTextures();
+    const trackGeo = new THREE.BufferGeometry();
+    const positions = [];
+    const normals = [];
+    const uvs = [];
+    const indices = [];
+
+    for (let i = 0; i <= TRACK_SAMPLES; i++) {
+      const s = trackSamples[i % TRACK_SAMPLES];
+      const surf = s.surface;
+      const uMin = surf * 0.25 + 0.01;
+      const uMax = surf * 0.25 + 0.24;
+
+      const leftPt = s.point.clone().addScaledVector(s.right, -TRACK_HALF_WIDTH);
+      const rightPt = s.point.clone().addScaledVector(s.right, TRACK_HALF_WIDTH);
+
+      positions.push(leftPt.x, leftPt.y + 0.08, leftPt.z);
+      positions.push(rightPt.x, rightPt.y + 0.08, rightPt.z);
+      normals.push(0, 1, 0, 0, 1, 0);
+
+      const vCoord = (i / TRACK_SAMPLES) * 42;
+      uvs.push(uMin, vCoord, uMax, vCoord);
+
+      if (i < TRACK_SAMPLES) {
+        const base = i * 2;
+        indices.push(base, base + 1, base + 2);
+        indices.push(base + 1, base + 3, base + 2);
+      }
+    }
+
+    trackGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    trackGeo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    trackGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    trackGeo.setIndex(indices);
+
+    const trackMat = new THREE.MeshStandardMaterial({
+      map: trackTextures.map,
+      bumpMap: trackTextures.bump,
+      bumpScale: 0.22,
+      roughness: 0.84,
+      metalness: 0.03
+    });
+    const trackMesh = new THREE.Mesh(trackGeo, trackMat);
+    trackMesh.receiveShadow = true;
+    scene.add(trackMesh);
+
+    const checkerTex = createCheckeredBannerTexture();
+    function addRoadCheckeredStrip(uVal) {
+      const pt = trackCurve.getPointAt(uVal);
+      const tan = trackCurve.getTangentAt(uVal).normalize();
+      const yaw = Math.atan2(tan.x, tan.z);
+      const strip = new THREE.Mesh(
+        new THREE.PlaneGeometry(TRACK_HALF_WIDTH * 1.96, 3.4),
+        new THREE.MeshStandardMaterial({ map: checkerTex, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -2 })
+      );
+      strip.rotation.order = 'YXZ';
+      strip.rotation.y = yaw;
+      strip.rotation.x = -Math.PI / 2;
+      strip.position.set(pt.x, pt.y + 0.14, pt.z);
+      strip.receiveShadow = true;
+      scene.add(strip);
+    }
+    addRoadCheckeredStrip(0.0);
+    addRoadCheckeredStrip(0.14);
+
+    // Wooden Suspension Bridge Rails & Support Pillars
+    const bridgeGroup = new THREE.Group();
+    const woodPostMat = new THREE.MeshStandardMaterial({ color: 0x5c3818, roughness: 0.85 });
+    const ropeMat = new THREE.MeshStandardMaterial({ color: 0xd6b27c, roughness: 0.9 });
+    for (let i = 0; i < TRACK_SAMPLES; i += 6) {
+      const s = trackSamples[i];
+      if (s.u >= 0.34 && s.u <= 0.43) {
+        const yaw = Math.atan2(s.tangent.x, s.tangent.z);
+        [-1, 1].forEach(side => {
+          const postPos = s.point.clone().addScaledVector(s.right, side * (TRACK_HALF_WIDTH + 0.4));
+          const post = new THREE.Mesh(new THREE.BoxGeometry(0.65, 3.2, 0.65), woodPostMat);
+          post.position.set(postPos.x, postPos.y + 1.4, postPos.z);
+          post.rotation.y = yaw;
+          post.castShadow = true;
+          bridgeGroup.add(post);
+
+          const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 4.2, 8), ropeMat);
+          rail.rotation.order = 'YXZ';
+          rail.rotation.y = yaw;
+          rail.rotation.x = Math.PI / 2;
+          rail.position.set(postPos.x, postPos.y + 2.3, postPos.z);
+          bridgeGroup.add(rail);
+        });
+      }
+    }
+    scene.add(bridgeGroup);
+
+    // =========================================================================
+    // 6. ISLAND TERRAIN, MULTI-TONE EARTH & MULTI-DEPTH CARIBBEAN OCEAN
+    // =========================================================================
+    const TRACK_BLEND_RADIUS = TRACK_HALF_WIDTH + 14;
+    const TRACK_BLEND_RADIUS_SQ = TRACK_BLEND_RADIUS * TRACK_BLEND_RADIUS;
+
+    function computeIslandTerrainHeightAndBiome(x, z) {
+      const rSq = x * x + z * z;
+      if (rSq > 235 * 235) return { h: -6.5, biome: 'ocean' };
+      const r = Math.sqrt(rSq);
+
+      let h = Math.max(-4.5, (1 - Math.pow(r / 215, 2.1)) * 18);
+
+      const vx = x - 2;
+      const vz = z + 132;
+      const vrSq = vx * vx + vz * vz;
+      let isVolcano = false;
+      if (vrSq < 92 * 92) {
+        const vr = Math.sqrt(vrSq);
+        const angle = Math.atan2(vz, vx);
+        const ridge = Math.sin(angle * 9) * 3.2 + Math.cos(angle * 5) * 2.1;
+        const cone = Math.pow(1 - vr / 92, 1.55) * 96 + ridge * (1 - vr / 92);
+        const craterDip = vr < 16 ? (1 - vr / 16) * 22 : 0;
+        h += Math.max(0, cone - craterDip);
+        isVolcano = vr < 74;
+      }
+
+      const jx = x + 95, jz = z + 45;
+      const jDistSq = jx * jx + jz * jz;
+      if (jDistSq < 75 * 75) {
+        const jDist = Math.sqrt(jDistSq);
+        h += Math.pow(1 - jDist / 75, 1.6) * 21;
+      }
+
+      let minDistSq = Infinity;
+      let nearestSample = null;
+      for (let i = 0; i < TRACK_SAMPLES; i += 4) {
+        const s = trackSamples[i];
+        if (s.u >= 0.345 && s.u <= 0.425) continue;
+        const dx = x - s.point.x;
+        const dz = z - s.point.z;
+        const dSq = dx * dx + dz * dz;
+        if (dSq < minDistSq) {
+          minDistSq = dSq;
+          nearestSample = s;
+        }
+      }
+
+      if (nearestSample && minDistSq < TRACK_BLEND_RADIUS_SQ) {
+        const minDist = Math.sqrt(minDistSq);
+        const blend = Math.max(0, Math.min(1, (minDist - TRACK_HALF_WIDTH) / 14));
+        const smooth = blend * blend * (3 - 2 * blend);
+        const targetH = nearestSample.point.y - 0.18;
+        if (nearestSample.u >= 0.62 && nearestSample.u <= 0.76) {
+          h = Math.min(h, targetH);
+        } else {
+          h = targetH * (1 - smooth) + h * smooth;
+        }
+      }
+
+      let biome = 'grass';
+      if (isVolcano && h > 34) biome = 'volcano';
+      else if (h < 8.8 || z > 95) biome = 'sand';
+
+      return { h, biome };
+    }
+
+    const terrainGeo = new THREE.PlaneGeometry(480, 480, 180, 180);
+    terrainGeo.rotateX(-Math.PI / 2);
+    const tPos = terrainGeo.attributes.position;
+    // Encode biome weights in vertex color channels: R = sandWeight, G = grassWeight, B = volcanoWeight
+    const tColors = new Float32Array(tPos.count * 3);
+
+    for (let i = 0; i < tPos.count; i++) {
+      const x = tPos.getX(i);
+      const z = tPos.getZ(i);
+      const { h, biome } = computeIslandTerrainHeightAndBiome(x, z);
+      tPos.setY(i, h);
+
+      let wSand = 0.0, wGrass = 0.0, wVolcano = 0.0;
+      if (biome === 'volcano') {
+        wVolcano = 1.0;
+      } else if (biome === 'sand' || biome === 'ocean') {
+        wSand = 1.0;
+      } else {
+        // Smooth transition between beach sand and lush grass between h=6.5 and h=11.0
+        const sandFade = Math.max(0, Math.min(1, (10.5 - h) / 3.5));
+        wSand = sandFade;
+        wGrass = 1.0 - sandFade;
+      }
+      tColors[i * 3] = wSand;
+      tColors[i * 3 + 1] = wGrass;
+      tColors[i * 3 + 2] = wVolcano;
+    }
+    terrainGeo.setAttribute('color', new THREE.BufferAttribute(tColors, 3));
+    terrainGeo.computeVertexNormals();
+
+    const terrainUniforms = {
+      uTime: { value: 0.0 }
+    };
+
+    const terrainMat = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      bumpMap: trackTextures.terrainBump,
+      bumpScale: 0.12,
+      roughness: 0.82,
+      metalness: 0.02
+    });
+
+    terrainMat.onBeforeCompile = (shader) => {
+      shader.uniforms.uTime = terrainUniforms.uTime;
+      shader.vertexShader = `
+        varying vec3 vTerrainWorldPos;
+        varying vec3 vTerrainWorldNormal;
+      ` + shader.vertexShader.replace(
+        '#include <worldpos_vertex>',
+        `
+        #include <worldpos_vertex>
+        vTerrainWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        vTerrainWorldNormal = normalize(mat3(modelMatrix) * objectNormal);
+        `
+      );
+
+      shader.fragmentShader = `
+        uniform float uTime;
+        varying vec3 vTerrainWorldPos;
+        varying vec3 vTerrainWorldNormal;
+
+        float mkHash(vec2 p) {
+          p = fract(p * vec2(127.1, 311.7));
+          p += dot(p, p + 45.32);
+          return fract(p.x * p.y);
+        }
+
+        float mkNoise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          return mix(
+            mix(mkHash(i), mkHash(i + vec2(1.0, 0.0)), f.x),
+            mix(mkHash(i + vec2(0.0, 1.0)), mkHash(i + vec2(1.0, 1.0)), f.x),
+            f.y
+          );
+        }
+
+        float mkVoronoi(vec2 p) {
+          vec2 n = floor(p);
+          vec2 f = fract(p);
+          float md = 1.0;
+          for (int y = -1; y <= 1; y++) {
+            for (int x = -1; x <= 1; x++) {
+              vec2 nb = vec2(float(x), float(y));
+              float h = mkHash(n + nb);
+              vec2 pt = nb + vec2(h, fract(h * 17.3)) - f;
+              md = min(md, dot(pt, pt));
+            }
+          }
+          return sqrt(md);
+        }
+      ` + shader.fragmentShader.replace(
+        '#include <color_fragment>',
+        `
+        vec2 wp = vTerrainWorldPos.xz;
+        float hY = vTerrainWorldPos.y;
+        float nLarge = mkNoise(wp * 0.06);
+        float nMed   = mkNoise(wp * 0.25);
+        float nFine  = mkNoise(wp * 1.15);
+
+        // 1. MARIO KART 8 LUSH GRASS (Mowed lawn stripes, blade clusters & wildflowers)
+        float mowerStripe = smoothstep(-0.35, 0.35, sin((wp.x + wp.y) * 0.32 + nLarge * 1.2));
+        float crossStripe = smoothstep(-0.4, 0.4, sin((wp.x - wp.y) * 0.32));
+        float checkerMask = mix(mowerStripe, mowerStripe * 0.65 + crossStripe * 0.35, 0.45);
+
+        vec3 grassDark  = vec3(0.12, 0.56, 0.18);
+        vec3 grassMid   = vec3(0.20, 0.72, 0.24);
+        vec3 grassLight = vec3(0.38, 0.86, 0.28);
+        vec3 jungleDeep = vec3(0.08, 0.44, 0.15);
+
+        vec3 grassCol = mix(grassMid, grassLight, checkerMask * 0.65 + nMed * 0.35);
+        grassCol = mix(grassDark, grassCol, smoothstep(0.2, 0.8, nFine));
+        // Western jungle lushness
+        float jungleMask = smoothstep(-10.0, -65.0, wp.x);
+        grassCol = mix(grassCol, mix(jungleDeep, grassMid, nMed), jungleMask * 0.55);
+        // Tiny Mario Kart wildflower & clover specks
+        float flowerDot = smoothstep(0.86, 0.92, mkNoise(wp * 1.8));
+        vec3 flowerHue = mix(vec3(1.0, 0.92, 0.25), vec3(1.0, 0.98, 0.95), step(0.5, nFine));
+        grassCol = mix(grassCol, flowerHue, flowerDot * 0.45);
+
+        // 2. MARIO KART PEACH BEACH / KOOPA BEACH SAND (Golden rippled dunes & wet shore)
+        float duneRipple = sin(wp.x * 1.4 + wp.y * 0.9 + nMed * 3.0) * 0.5 + 0.5;
+        vec3 sandDryLight = vec3(0.96, 0.84, 0.55);
+        vec3 sandDryWarm  = vec3(0.88, 0.70, 0.40);
+        vec3 sandWet      = vec3(0.52, 0.36, 0.20);
+        vec3 sandCol = mix(sandDryWarm, sandDryLight, duneRipple * 0.6 + nFine * 0.4);
+        float wetShoreMask = 1.0 - smoothstep(1.5, 3.4, hY);
+        sandCol = mix(sandCol, sandWet, wetShoreMask);
+
+        // 3. MARIO KART TERRACOTTA EARTH & STRATIFIED CLIFF ROCK (Automatic slope embankments)
+        float slope = 1.0 - clamp(abs(vTerrainWorldNormal.y), 0.0, 1.0);
+        float cliffMask = smoothstep(0.16, 0.38, slope);
+        float rockStrata = sin(hY * 1.7 + nLarge * 4.0) * 0.5 + 0.5;
+        vec3 cliffDark  = vec3(0.50, 0.27, 0.13);
+        vec3 cliffTerra = vec3(0.72, 0.42, 0.22);
+        vec3 cliffOchre = vec3(0.85, 0.58, 0.32);
+        vec3 cliffCol = mix(cliffDark, cliffTerra, rockStrata);
+        cliffCol = mix(cliffCol, cliffOchre, nMed * 0.55);
+
+        // 4. VOLCANO BASALT & VORONOI MAGMA FISSURES
+        float vor = mkVoronoi(wp * 0.16);
+        vec3 basaltCol = mix(vec3(0.20, 0.17, 0.16), vec3(0.34, 0.29, 0.27), nMed * 0.7 + nFine * 0.3);
+        float lavaCrack = (1.0 - smoothstep(0.0, 0.16, vor)) * smoothstep(42.0, 56.0, hY);
+        float lavaPulse = 0.75 + 0.25 * sin(uTime * 3.5 + wp.x * 0.2);
+        vec3 lavaCol = mix(vec3(1.0, 0.28, 0.0), vec3(1.0, 0.88, 0.15), lavaCrack) * (1.4 * lavaPulse);
+        vec3 volcanoCol = mix(basaltCol, lavaCol, lavaCrack);
+
+        // Blend biomes smoothly using vertex weights (vColor.rgb) + noisy border splatting
+        float wSand    = vColor.r;
+        float wGrass   = vColor.g;
+        float wVolcano = vColor.b;
+
+        vec3 surfaceCol = sandCol * wSand + grassCol * wGrass + volcanoCol * wVolcano;
+        // Apply terracotta cliff rock on steep grass/sand slopes (not volcano cone)
+        surfaceCol = mix(surfaceCol, cliffCol, cliffMask * (1.0 - wVolcano * 0.85));
+
+        diffuseColor.rgb = surfaceCol;
+        `
+      );
+    };
+
+    const terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
+    terrainMesh.receiveShadow = true;
+    scene.add(terrainMesh);
+
+    // =========================================================================
+    // 6B. MARIO KART CARIBBEAN OCEAN SHADER (Voronoi Caustics + Shoreline Surf Foam)
+    // =========================================================================
+    const oceanGeo = new THREE.PlaneGeometry(1800, 1800, 140, 140);
+    oceanGeo.rotateX(-Math.PI / 2);
+    const oPos = oceanGeo.attributes.position;
+    // Store terrain height in vertex attribute so shoreline surf foam hugs the exact island contour
+    const oShoreHeight = new Float32Array(oPos.count);
+
+    for (let i = 0; i < oPos.count; i++) {
+      const ox = oPos.getX(i);
+      const oz = oPos.getZ(i);
+      const dist = Math.sqrt(ox * ox + oz * oz);
+      oShoreHeight[i] = (dist < 235 && dist > 110) ? computeIslandTerrainHeightAndBiome(ox, oz).h : -6.5;
+    }
+    oceanGeo.setAttribute('aShoreHeight', new THREE.BufferAttribute(oShoreHeight, 1));
+
+    const oceanUniforms = {
+      uTime: { value: 0.0 }
+    };
+
+    const oceanMat = new THREE.ShaderMaterial({
+      uniforms: oceanUniforms,
+      vertexShader: `
+        uniform float uTime;
+        attribute float aShoreHeight;
+        varying vec3 vOceanWorldPos;
+        varying float vShoreHeight;
+
+        void main() {
+          vec3 pos = position;
+          vec4 wp = modelMatrix * vec4(pos, 1.0);
+          // Gentle synchronized tropical swell
+          float swell = sin(wp.x * 0.06 + uTime * 2.0) * cos(wp.z * 0.06 + uTime * 1.6) * 0.24;
+          wp.y += swell;
+          vOceanWorldPos = wp.xyz;
+          vShoreHeight = aShoreHeight;
+          gl_Position = projectionMatrix * viewMatrix * wp;
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        varying vec3 vOceanWorldPos;
+        varying float vShoreHeight;
+
+        vec2 vorHash2(vec2 p) {
+          return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+        }
+
+        // Animated Voronoi Cellular Caustics (Mario Kart 8 Peach Beach / Dolphin Shoals style)
+        float voronoiCaustics(vec2 st, float timeOffset) {
+          vec2 n = floor(st);
+          vec2 f = fract(st);
+          float md = 1.0;
+          for (int y = -1; y <= 1; y++) {
+            for (int x = -1; x <= 1; x++) {
+              vec2 nb = vec2(float(x), float(y));
+              vec2 pt = vorHash2(n + nb);
+              pt = 0.5 + 0.42 * sin(timeOffset + 6.2831 * pt);
+              vec2 diff = nb + pt - f;
+              md = min(md, length(diff));
+            }
+          }
+          return md;
+        }
+
+        void main() {
+          vec2 xz = vOceanWorldPos.xz;
+          float dist = length(xz);
+
+          // Multi-depth Nintendo Tropical Water Palette
+          vec3 colTurquoise = vec3(0.10, 0.88, 0.80); // Crystal shallow reef
+          vec3 colAqua      = vec3(0.02, 0.62, 0.92); // Vibrant mid-lagoon
+          vec3 colCobalt    = vec3(0.03, 0.32, 0.76); // Deep Mario Kart blue
+          vec3 colNavy      = vec3(0.02, 0.15, 0.42); // Horizon sea
+
+          vec3 waterCol = mix(colTurquoise, colAqua, smoothstep(145.0, 215.0, dist));
+          waterCol = mix(waterCol, colCobalt, smoothstep(215.0, 380.0, dist));
+          waterCol = mix(waterCol, colNavy, smoothstep(380.0, 750.0, dist));
+
+          // Dual-Layer Shimmering Voronoi Caustics Web in Shallow & Mid Water
+          float causticsFade = 1.0 - smoothstep(160.0, 420.0, dist);
+          if (causticsFade > 0.01) {
+            vec2 uvC = xz * 0.085;
+            float v1 = voronoiCaustics(uvC + vec2(uTime * 0.08, -uTime * 0.06), uTime * 1.4);
+            float v2 = voronoiCaustics(uvC * 1.35 - vec2(uTime * 0.07, uTime * 0.09), uTime * 1.7);
+            float web = smoothstep(0.32, 0.78, (v1 * v2) * 2.1);
+            waterCol += vec3(0.65, 0.98, 1.0) * web * 0.42 * causticsFade;
+          }
+
+          // Animated Shoreline Surf Waves & Crisp White Foam Rings hugging the beach
+          float shoreDepth = 2.1 - vShoreHeight;
+          if (shoreDepth > -0.6 && shoreDepth < 3.2) {
+            float wavePhase = sin(shoreDepth * 4.5 - uTime * 3.4);
+            float foamRing1 = smoothstep(0.35, 0.75, wavePhase) * (1.0 - smoothstep(0.0, 2.6, shoreDepth));
+            float foamEdge  = 1.0 - smoothstep(-0.2, 0.65, abs(shoreDepth - 0.35));
+            float foamMask  = clamp(foamRing1 * 0.75 + foamEdge * 0.95, 0.0, 1.0);
+            waterCol = mix(waterCol, vec3(0.98, 0.99, 1.0), foamMask);
+          }
+
+          // Subtle distance fog blend to horizon
+          float fogFactor = 1.0 - exp(-0.00055 * dist * dist * 0.0012);
+          waterCol = mix(waterCol, vec3(0.43, 0.72, 0.94), clamp(fogFactor, 0.0, 0.65));
+
+          gl_FragColor = vec4(waterCol, 1.0);
+        }
+      `
+    });
+    const oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
+    oceanMesh.position.y = 1.6;
+    scene.add(oceanMesh);
+
+    // =========================================================================
+    // 7. VOLCANO CAVE TUNNEL, JAGGED ROCK FORMATIONS & WARM MAGMA ILLUMINATION
+    // =========================================================================
+    const volcanoGroup = new THREE.Group();
+
+    function createJaggedRockGeometry(radius, detail = 1, seed = 1) {
+      const geo = new THREE.IcosahedronGeometry(radius, detail);
+      const pos = geo.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i);
+        const n =
+          Math.sin(v.x * 0.65 + seed) *
+          Math.cos(v.y * 0.55 - seed * 0.7) *
+          Math.sin(v.z * 0.65 + seed * 1.3);
+        const crag = 1.0 + n * 0.34 + Math.cos(v.x * 1.3 + v.z * 1.1) * 0.14;
+        v.multiplyScalar(crag);
+        pos.setXYZ(i, v.x, v.y, v.z);
+      }
+      geo.computeVertexNormals();
+      return geo;
+    }
+
+    const caveWallMat = new THREE.MeshStandardMaterial({
+      color: 0x6b564e,
+      emissive: 0x381608,
+      emissiveIntensity: 0.55,
+      roughness: 0.86,
+      metalness: 0.08,
+      flatShading: true
+    });
+
+    const caveCeilingMat = new THREE.MeshStandardMaterial({
+      color: 0x594740,
+      emissive: 0x2b1105,
+      emissiveIntensity: 0.48,
+      roughness: 0.9,
+      flatShading: true
+    });
+
+    const lavaMat = new THREE.MeshStandardMaterial({
+      color: 0xff5500,
+      emissive: 0xff6d00,
+      emissiveIntensity: 2.6,
+      roughness: 0.22
+    });
+
+    const crystalMat = new THREE.MeshStandardMaterial({
+      color: 0xffb703,
+      emissive: 0xff5400,
+      emissiveIntensity: 1.9,
+      roughness: 0.2,
+      flatShading: true
+    });
+
+    const rockVariations = [
+      createJaggedRockGeometry(5.6, 1, 1.1),
+      createJaggedRockGeometry(6.2, 1, 2.7),
+      createJaggedRockGeometry(5.0, 1, 4.3),
+      createJaggedRockGeometry(6.8, 1, 5.9)
+    ];
+
+    let caveStep = 0;
+    for (let i = 0; i < TRACK_SAMPLES; i += 5) {
+      const s = trackSamples[i];
+      if (s.u >= 0.61 && s.u <= 0.77) {
+        const yaw = Math.atan2(s.tangent.x, s.tangent.z);
+
+        [-1, 1].forEach((side, sIdx) => {
+          const jitterOut = TRACK_HALF_WIDTH + 4.4 + Math.sin(caveStep * 1.7 + sIdx) * 1.6;
+          const wallPos = s.point.clone().addScaledVector(s.right, side * jitterOut);
+
+          const lowerGeo = rockVariations[(caveStep + sIdx) % rockVariations.length];
+          const lowerRock = new THREE.Mesh(lowerGeo, caveWallMat);
+          lowerRock.scale.set(
+            1.15 + Math.sin(caveStep * 2.1) * 0.35,
+            1.45 + Math.cos(caveStep * 1.3) * 0.4,
+            1.25 + Math.sin(caveStep * 0.9) * 0.3
+          );
+          lowerRock.position.set(wallPos.x, s.point.y + 4.2 + (caveStep % 3) * 0.8, wallPos.z);
+          lowerRock.rotation.set(
+            Math.sin(caveStep) * 0.4,
+            yaw + caveStep * 0.7,
+            side * -0.22 + Math.cos(caveStep) * 0.25
+          );
+          volcanoGroup.add(lowerRock);
+
+          const upperGeo = rockVariations[(caveStep + sIdx + 2) % rockVariations.length];
+          const upperRock = new THREE.Mesh(upperGeo, caveCeilingMat);
+          const upperPos = s.point.clone().addScaledVector(s.right, side * (jitterOut - 2.1));
+          upperRock.scale.set(1.35, 1.2, 1.3);
+          upperRock.position.set(upperPos.x, s.point.y + 11.8 + Math.sin(caveStep) * 1.5, upperPos.z);
+          upperRock.rotation.set(caveStep * 0.5, yaw + caveStep * 1.1, side * -0.45);
+          volcanoGroup.add(upperRock);
+
+          const channelPos = s.point.clone().addScaledVector(s.right, side * (TRACK_HALF_WIDTH + 0.85));
+          const magmaStrip = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.45, 4.6), lavaMat);
+          magmaStrip.position.set(channelPos.x, s.point.y + 0.18, channelPos.z);
+          magmaStrip.rotation.y = yaw;
+          volcanoGroup.add(magmaStrip);
+        });
+
+        if (caveStep % 2 === 0) {
+          const roofGeo = rockVariations[caveStep % rockVariations.length];
+          const roofRock = new THREE.Mesh(roofGeo, caveCeilingMat);
+          roofRock.scale.set(
+            2.1 + Math.sin(caveStep) * 0.3,
+            0.95 + Math.cos(caveStep * 1.5) * 0.25,
+            1.65
+          );
+          roofRock.position.set(
+            s.point.x + Math.sin(caveStep * 2.3) * 2.0,
+            s.point.y + 16.5 + Math.cos(caveStep) * 1.4,
+            s.point.z
+          );
+          roofRock.rotation.set(0.2, yaw + caveStep * 0.8, Math.sin(caveStep) * 0.2);
+          volcanoGroup.add(roofRock);
+
+          [-1, 1].forEach(stSide => {
+            const stPos = s.point.clone().addScaledVector(
+              s.right,
+              stSide * (3.5 + (caveStep % 3) * 2.1)
+            );
+            const stalactite = new THREE.Mesh(
+              new THREE.ConeGeometry(1.1 + (caveStep % 2) * 0.4, 4.8 + (caveStep % 3) * 1.4, 5),
+              caveWallMat
+            );
+            stalactite.rotation.x = Math.PI;
+            stalactite.rotation.y = caveStep * 1.2;
+            stalactite.position.set(stPos.x, s.point.y + 13.4, stPos.z);
+            volcanoGroup.add(stalactite);
+          });
+        }
+
+        if (caveStep % 4 === 0) {
+          const lavaSide = (caveStep % 8 === 0) ? 1 : -1;
+          const lavaPos = s.point.clone().addScaledVector(s.right, lavaSide * (TRACK_HALF_WIDTH + 2.8));
+
+          const fall = new THREE.Mesh(new THREE.ConeGeometry(2.1, 13.5, 6), lavaMat);
+          fall.position.set(lavaPos.x, s.point.y + 6.2, lavaPos.z);
+          fall.rotation.z = lavaSide * 0.18;
+          volcanoGroup.add(fall);
+
+          const pool = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.6, 0.5, 7), lavaMat);
+          pool.position.set(lavaPos.x - lavaSide * 1.1, s.point.y + 0.25, lavaPos.z);
+          volcanoGroup.add(pool);
+
+          const crysPos = s.point.clone().addScaledVector(s.right, -lavaSide * (TRACK_HALF_WIDTH + 1.9));
+          for (let c = 0; c < 3; c++) {
+            const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.95, 0), crystalMat);
+            shard.scale.set(0.7, 2.2 + c * 0.4, 0.7);
+            shard.position.set(
+              crysPos.x + (c - 1) * 0.8,
+              s.point.y + 1.2 + c * 0.3,
+              crysPos.z + (c - 1) * 0.6
+            );
+            shard.rotation.set((c - 1) * 0.3, caveStep + c, lavaSide * 0.35);
+            volcanoGroup.add(shard);
+          }
+        }
+
+        if (caveStep % 5 === 0) {
+          const caveLight = new THREE.PointLight(0xff7b29, 5.5, 58, 1.4);
+          caveLight.position.set(s.point.x, s.point.y + 7.5, s.point.z);
+          volcanoGroup.add(caveLight);
+        }
+
+        caveStep++;
+      }
+    }
+
+    const craterLight = new THREE.PointLight(0xff5500, 6, 140);
+    craterLight.position.set(2, 98, -132);
+    volcanoGroup.add(craterLight);
+
+    const smokePuffs = [];
+    const smokeMat = new THREE.MeshStandardMaterial({
+      color: 0x4a4543,
+      emissive: 0x331100,
+      roughness: 1,
+      transparent: true,
+      opacity: 0.78
+    });
+    for (let i = 0; i < 14; i++) {
+      const puff = new THREE.Mesh(new THREE.SphereGeometry(6 + (i % 4) * 2.5, 12, 12), smokeMat);
+      puff.position.set(2 + Math.sin(i) * 4, 96 + i * 7.5, -132 + Math.cos(i) * 4);
+      volcanoGroup.add(puff);
+      smokePuffs.push({ mesh: puff, baseY: puff.position.y, phase: i * 0.6 });
+    }
+    scene.add(volcanoGroup);
+
+    // =========================================================================
+    // 8. SEASIDE VILLAGE RESORT BUILDINGS, SHOPS, PROMENADE & ARCHWAYS
+    // =========================================================================
+    const villageGroup = new THREE.Group();
+    const stoneWallMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.85 });
+
+    const villageShopConfigs = [
+      { base: '#f4a261', trim: '#ffffff', title: 'GEPI SURF SHOP', awning: '#E1254B' },
+      { base: '#48cae4', trim: '#f8fafc', title: 'CORAL GELATO',   awning: '#ec4899' },
+      { base: '#f77f9b', trim: '#fffbeb', title: 'HIBISCUS CAFE',  awning: '#3894D1' },
+      { base: '#e9c46a', trim: '#ffffff', title: 'TIKI BOUTIQUE',  awning: '#16a34a' },
+      { base: '#a78bfa', trim: '#f8fafc', title: 'ISLAND ARCADE',  awning: '#f59e0b' },
+      { base: '#52b788', trim: '#ffffff', title: 'PALM BISTRO',    awning: '#E1254B' },
+      { base: '#fb8500', trim: '#fffbeb', title: 'SUNSET HOTEL',   awning: '#0284c7' },
+      { base: '#60a5fa', trim: '#ffffff', title: 'BAY MARINA',     awning: '#e11d48' }
+    ];
+
+    const facadeMaterials = villageShopConfigs.map(cfg => {
+      const tex = createBuildingFacadeTexture(cfg.base, cfg.trim, cfg.title, cfg.awning);
+      return {
+        facadeMat: new THREE.MeshStandardMaterial({ map: tex, roughness: 0.55 }),
+        sideMat: new THREE.MeshStandardMaterial({ color: cfg.base, roughness: 0.68 }),
+        roofMat: new THREE.MeshStandardMaterial({ color: cfg.trim, roughness: 0.5 }),
+        awningMat: new THREE.MeshStandardMaterial({ color: cfg.awning, roughness: 0.45 })
+      };
+    });
+
+    function createResortBuilding(w, h, d, styleIdx) {
+      const b = new THREE.Group();
+      const style = facadeMaterials[styleIdx % facadeMaterials.length];
+
+      const plinth = new THREE.Mesh(new THREE.BoxGeometry(w + 2.4, 24, d + 2.4), stoneWallMat);
+      plinth.position.y = -12;
+      plinth.receiveShadow = true;
+      b.add(plinth);
+
+      const materials = [
+        style.sideMat,
+        style.sideMat,
+        style.roofMat,
+        style.roofMat,
+        style.facadeMat,
+        style.facadeMat
+      ];
+      const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), materials);
+      body.position.y = h / 2;
+      body.castShadow = true;
+      body.receiveShadow = true;
+      b.add(body);
+
+      const cornice = new THREE.Mesh(new THREE.BoxGeometry(w + 1.0, 1.1, d + 1.0), style.roofMat);
+      cornice.position.y = h + 0.55;
+      cornice.castShadow = true;
+      b.add(cornice);
+
+      const acBox = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.4, 1.8), stoneWallMat);
+      acBox.position.set(w * 0.2, h + 1.6, -d * 0.15);
+      b.add(acBox);
+
+      const balcony = new THREE.Mesh(new THREE.BoxGeometry(w * 0.72, 0.45, 1.8), style.roofMat);
+      balcony.position.set(0, h * 0.52, d * 0.5 + 0.8);
+      balcony.castShadow = true;
+      b.add(balcony);
+
+      const awning = new THREE.Mesh(new THREE.BoxGeometry(w * 0.88, 0.85, 2.9), style.awningMat);
+      awning.position.set(0, 4.4, d * 0.5 + 1.25);
+      awning.rotation.x = 0.28;
+      awning.castShadow = true;
+      b.add(awning);
+
+      const umbPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3.2, 8), stoneWallMat);
+      umbPole.position.set(w * 0.28, 1.6, d * 0.5 + 2.6);
+      const umbTop = new THREE.Mesh(new THREE.ConeGeometry(2.1, 0.9, 10), style.awningMat);
+      umbTop.position.set(w * 0.28, 3.2, d * 0.5 + 2.6);
+      umbTop.castShadow = true;
+      b.add(umbPole, umbTop);
+
+      return b;
+    }
+
+    let bIdx = 0;
+    for (let u = 0.135; u <= 0.315; u += 0.019) {
+      const pt = trackCurve.getPointAt(u);
+      const tan = trackCurve.getTangentAt(u).normalize();
+      const right = new THREE.Vector3().crossVectors(tan, new THREE.Vector3(0, 1, 0)).normalize();
+      const yaw = Math.atan2(tan.x, tan.z);
+
+      const leftPos = pt.clone().addScaledVector(right, -(TRACK_HALF_WIDTH + 8.8));
+      const bLeft = createResortBuilding(10.5, 17 + (bIdx % 3) * 3.5, 9.5, bIdx);
+      bLeft.position.set(leftPos.x, pt.y - 0.1, leftPos.z);
+      bLeft.rotation.y = yaw + Math.PI / 2;
+      villageGroup.add(bLeft);
+
+      if (bIdx % 2 === 0) {
+        const tierPos = pt.clone().addScaledVector(right, -(TRACK_HALF_WIDTH + 20.5));
+        const bTier = createResortBuilding(11.5, 22 + (bIdx % 2) * 4, 10.5, bIdx + 3);
+        bTier.position.set(tierPos.x, pt.y + 4.5, tierPos.z);
+        bTier.rotation.y = yaw + Math.PI / 2;
+        villageGroup.add(bTier);
+      }
+
+      if (bIdx % 2 === 0 || u > 0.22) {
+        const rightPos = pt.clone().addScaledVector(right, TRACK_HALF_WIDTH + 9.2);
+        const bRight = createResortBuilding(10, 16 + (bIdx % 2) * 4, 9.5, bIdx + 4);
+        bRight.position.set(rightPos.x, pt.y - 0.3, rightPos.z);
+        bRight.rotation.y = yaw - Math.PI / 2;
+        villageGroup.add(bRight);
+      }
+
+      const lampPos = pt.clone().addScaledVector(right, -(TRACK_HALF_WIDTH + 1.8));
+      const pole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.14, 0.18, 5.5, 8),
+        new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.3 })
+      );
+      pole.position.set(lampPos.x, pt.y + 2.7, lampPos.z);
+      const bulb = new THREE.Mesh(
+        new THREE.SphereGeometry(0.45, 10, 10),
+        new THREE.MeshBasicMaterial({ color: 0xfff3b0 })
+      );
+      bulb.position.set(lampPos.x, pt.y + 5.6, lampPos.z);
+      villageGroup.add(pole, bulb);
+
+      bIdx++;
+    }
+    scene.add(villageGroup);
+
+    // Beach Sponsor Boards, Surfboards & Crowd around Start/Finish Curve
+    const beachDecorGroup = new THREE.Group();
+    const bannerColors = [0xE1254B, 0x3894D1, 0xFFD700, 0x16a34a, 0xf97316];
+    let sbIdx = 0;
+    for (let u = 0.90; u <= 1.12; u += 0.016) {
+      const wrapU = u % 1.0;
+      const pt = trackCurve.getPointAt(wrapU);
+      const tan = trackCurve.getTangentAt(wrapU).normalize();
+      const right = new THREE.Vector3().crossVectors(tan, new THREE.Vector3(0, 1, 0)).normalize();
+      const yaw = Math.atan2(tan.x, tan.z);
+
+      [-1, 1].forEach((side, sIdx) => {
+        const bPos = pt.clone().addScaledVector(right, side * (TRACK_HALF_WIDTH + 1.5));
+        const board = new THREE.Mesh(
+          new THREE.BoxGeometry(0.35, 1.35, 4.2),
+          new THREE.MeshStandardMaterial({ color: bannerColors[(sbIdx + sIdx) % bannerColors.length], roughness: 0.5 })
+        );
+        board.position.set(bPos.x, pt.y + 0.7, bPos.z);
+        board.rotation.y = yaw;
+        board.castShadow = true;
+        beachDecorGroup.add(board);
+
+        if (sbIdx % 2 === 0) {
+          const specPos = pt.clone().addScaledVector(right, side * (TRACK_HALF_WIDTH + 3.4));
+          const spec = new THREE.Mesh(
+            new THREE.CapsuleGeometry(0.55, 0.7, 6, 10),
+            new THREE.MeshStandardMaterial({ color: bannerColors[(sbIdx * 2 + sIdx) % bannerColors.length], roughness: 0.4 })
+          );
+          spec.position.set(specPos.x, pt.y + 1.1, specPos.z);
+          spec.castShadow = true;
+          beachDecorGroup.add(spec);
+        }
+      });
+      sbIdx++;
+    }
+    scene.add(beachDecorGroup);
+
+    function createOverheadSignPortal(uVal, title, textColor = '#FFD700') {
+      const sPt = trackCurve.getPointAt(uVal);
+      const sTan = trackCurve.getTangentAt(uVal).normalize();
+      const yaw = Math.atan2(sTan.x, sTan.z);
+
+      const portal = new THREE.Group();
+      portal.position.copy(sPt);
+      portal.rotation.y = yaw;
+
+      const pillarMat = new THREE.MeshStandardMaterial({ color: 0x5c3818, roughness: 0.85 });
+      const span = TRACK_HALF_WIDTH + 2.2;
+
+      [-span, span].forEach(xOff => {
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.15, 28, 12), pillarMat);
+        pillar.position.set(xOff, 4, 0);
+        pillar.castShadow = true;
+        portal.add(pillar);
+      });
+
+      const boardTex = createWoodenSignTexture(title, textColor);
+      const boardMat = new THREE.MeshStandardMaterial({ map: boardTex, roughness: 0.65 });
+      const board = new THREE.Mesh(new THREE.BoxGeometry(span * 2 + 4, 4.6, 1.2), boardMat);
+      board.position.set(0, 13.8, 0);
+      board.castShadow = true;
+      portal.add(board);
+
+      scene.add(portal);
+    }
+
+    createOverheadSignPortal(0.0,  'START / FINISH', '#FFD700');
+    createOverheadSignPortal(0.28, 'SEASIDE VILLAGE', '#ffffff');
+    createOverheadSignPortal(0.49, 'JUNGLE PASS', '#80ed99');
+    createOverheadSignPortal(0.75, 'VOLCANO CAVE', '#ff9e00');
+
+    // Glowing Curve Chevron Signs
+    function createChevronTexture() {
+      const c = document.createElement('canvas');
+      c.width = 256; c.height = 128;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(0, 0, 256, 128);
+      ctx.strokeStyle = '#FFD700';
+      ctx.lineWidth = 10;
+      ctx.strokeRect(5, 5, 246, 118);
+
+      ctx.fillStyle = '#E1254B';
+      for (let x = 28; x < 220; x += 72) {
+        ctx.beginPath();
+        ctx.moveTo(x, 22);
+        ctx.lineTo(x + 36, 64);
+        ctx.lineTo(x, 106);
+        ctx.lineTo(x + 24, 106);
+        ctx.lineTo(x + 60, 64);
+        ctx.lineTo(x + 24, 22);
+        ctx.closePath();
+        ctx.fill();
+      }
+      return new THREE.CanvasTexture(c);
+    }
+    const chevronTex = createChevronTexture();
+    const chevronMat = new THREE.MeshStandardMaterial({
+      map: chevronTex,
+      emissive: 0xffd700,
+      emissiveMap: chevronTex,
+      emissiveIntensity: 0.45
+    });
+
+    for (let i = 0; i < TRACK_SAMPLES; i += 14) {
+      const s1 = trackSamples[i];
+      const s2 = trackSamples[(i + 8) % TRACK_SAMPLES];
+      const crossY = s1.tangent.x * s2.tangent.z - s1.tangent.z * s2.tangent.x;
+      if (Math.abs(crossY) > 0.12 && (s1.u < 0.61 || s1.u > 0.77)) {
+        const outsideSide = crossY > 0 ? 1 : -1;
+        const pos = s1.point.clone().addScaledVector(s1.right, outsideSide * (TRACK_HALF_WIDTH + 1.6));
+        const sign = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.7, 0.25), chevronMat);
+        sign.position.set(pos.x, s1.point.y + 1.8, pos.z);
+        sign.rotation.y = Math.atan2(s1.tangent.x, s1.tangent.z) + (outsideSide > 0 ? -0.35 : 0.35);
+        scene.add(sign);
+      }
+    }
+
+    // =========================================================================
+    // 9. TROPICAL PALM TREES (100% VERIFIED OUTSIDE OF TRACK ROAD)
+    // =========================================================================
+    const palmsGroup = new THREE.Group();
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x7c4d25, roughness: 0.9 });
+    const frondMat = new THREE.MeshStandardMaterial({ color: 0x2ea836, roughness: 0.65, side: THREE.DoubleSide });
+
+    function createPalmTree(scale = 1) {
+      const tree = new THREE.Group();
+      const segs = 6;
+      let curY = -1.5;
+      let curX = 0;
+      for (let s = 0; s < segs; s++) {
+        const rBottom = (0.68 - s * 0.06) * scale;
+        const rTop = (0.62 - s * 0.06) * scale;
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBottom, 2.2 * scale, 8), trunkMat);
+        seg.position.set(curX, curY + 1.1 * scale, 0);
+        seg.rotation.z = -s * 0.04;
+        seg.castShadow = true;
+        tree.add(seg);
+        curY += 2.05 * scale;
+        curX += Math.sin(s * 0.04) * 0.45 * scale;
+      }
+
+      const crown = new THREE.Group();
+      crown.position.set(curX, curY, 0);
+      for (let f = 0; f < 7; f++) {
+        const frond = new THREE.Mesh(new THREE.BoxGeometry(0.95 * scale, 0.12 * scale, 5.2 * scale), frondMat);
+        frond.position.z = 2.2 * scale;
+        frond.rotation.x = 0.38;
+        const holder = new THREE.Group();
+        holder.rotation.y = (f / 7) * Math.PI * 2;
+        holder.add(frond);
+        crown.add(holder);
+      }
+      tree.add(crown);
+      return tree;
+    }
+
+    for (let attempt = 0; attempt < 260; attempt++) {
+      const ang = Math.random() * Math.PI * 2;
+      const rad = 28 + Math.random() * 175;
+      const x = Math.cos(ang) * rad;
+      const z = Math.sin(ang) * rad;
+
+      if (!isPointClearOfTrack(x, z, TRACK_HALF_WIDTH + 6.4)) continue;
+      const { h, biome } = computeIslandTerrainHeightAndBiome(x, z);
+      if (biome === 'ocean' || biome === 'volcano' || h < 2.2 || h > 36) continue;
+      if (x > 65 && z > -25 && z < 135) continue;
+
+      const palm = createPalmTree(0.85 + Math.random() * 0.45);
+      palm.position.set(x, h, z);
+      palm.rotation.y = Math.random() * Math.PI * 2;
+      palmsGroup.add(palm);
+    }
+    scene.add(palmsGroup);
+
+    // =========================================================================
+    // 10. COLLECTIBLES, ORGANIC WATER PUDDLES & STRAIGHT-ALIGNED BOOST PADS
+    // =========================================================================
+    const coins = [];
+    const chests = [];
+    const boostPads = [];
+    const waterPuddles = [];
+    const barrels = [];
+
+    const coinGeo = new THREE.CylinderGeometry(1.15, 1.15, 0.32, 20);
+    coinGeo.rotateX(Math.PI / 2);
+    const coinMat = new THREE.MeshStandardMaterial({
+      color: 0xFFD700,
+      emissive: 0xff9900,
+      emissiveIntensity: 0.35,
+      metalness: 0.85,
+      roughness: 0.18
+    });
+
+    for (let i = 0; i < 65; i++) {
+      const u = (i / 65);
+      const s = trackSamples[Math.floor(u * TRACK_SAMPLES)];
+      const laneOffset = Math.sin(i * 0.7) * (TRACK_HALF_WIDTH * 0.52);
+      const pos = s.point.clone().addScaledVector(s.right, laneOffset);
+      const mesh = new THREE.Mesh(coinGeo, coinMat);
+      mesh.position.set(pos.x, pos.y + 1.45, pos.z);
+      mesh.castShadow = true;
+      scene.add(mesh);
+      coins.push({ mesh, basePos: mesh.position.clone(), active: true, respawnTimer: 0 });
+    }
+
+    const chestLocations = [0.11, 0.26, 0.47, 0.68, 0.86];
+    chestLocations.forEach(u => {
+      const s = trackSamples[Math.floor(u * TRACK_SAMPLES)];
+      const pos = s.point.clone().addScaledVector(s.right, -3.5);
+      const chest = new THREE.Group();
+      const box = new THREE.Mesh(
+        new THREE.BoxGeometry(2.1, 1.5, 1.5),
+        new THREE.MeshStandardMaterial({ color: 0xE1254B, metalness: 0.3, roughness: 0.4 })
+      );
+      const lid = new THREE.Mesh(
+        new THREE.BoxGeometry(2.2, 0.5, 1.6),
+        new THREE.MeshStandardMaterial({ color: 0xFFD700, metalness: 0.7, roughness: 0.2 })
+      );
+      lid.position.y = 0.9;
+      chest.add(box, lid);
+      chest.position.set(pos.x, pos.y + 1.0, pos.z);
+      scene.add(chest);
+      chests.push({ mesh: chest, active: true, respawnTimer: 0 });
+    });
+
+    function createBoostPadTexture() {
+      const c = document.createElement('canvas');
+      c.width = 256; c.height = 512;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, 256, 512);
+      ctx.strokeStyle = '#00F0FF';
+      ctx.lineWidth = 14;
+      ctx.strokeRect(8, 8, 240, 496);
+
+      for (let y = 80; y < 460; y += 110) {
+        ctx.fillStyle = y % 220 === 80 ? '#00F0FF' : '#FFD700';
+        ctx.beginPath();
+        ctx.moveTo(40, y + 60);
+        ctx.lineTo(128, y);
+        ctx.lineTo(216, y + 60);
+        ctx.lineTo(190, y + 85);
+        ctx.lineTo(128, y + 40);
+        ctx.lineTo(66, y + 85);
+        ctx.closePath();
+        ctx.fill();
+      }
+      return new THREE.CanvasTexture(c);
+    }
+    const boostTex = createBoostPadTexture();
+    const boostMat = new THREE.MeshStandardMaterial({
+      map: boostTex,
+      emissive: 0x00f0ff,
+      emissiveMap: boostTex,
+      emissiveIntensity: 0.85,
+      roughness: 0.25,
+      polygonOffset: true,
+      polygonOffsetFactor: -3
+    });
+
+    const boostStraightSpots = [0.05, 0.21, 0.37, 0.67, 0.89];
+    boostStraightSpots.forEach(u => {
+      const s = trackSamples[Math.floor(u * TRACK_SAMPLES)];
+      const yaw = Math.atan2(s.tangent.x, s.tangent.z);
+      const pad = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 9.5), boostMat);
+      pad.rotation.order = 'YXZ';
+      pad.rotation.y = yaw;
+      pad.rotation.x = -Math.PI / 2;
+      pad.position.set(s.point.x, s.point.y + 0.16, s.point.z);
+      scene.add(pad);
+      boostPads.push({ pos: s.point.clone(), tangent: s.tangent.clone(), mesh: pad });
+    });
+
+    function createOrganicPuddleMesh() {
+      const shape = new THREE.Shape();
+      const pts = 14;
+      for (let i = 0; i <= pts; i++) {
+        const a = (i / pts) * Math.PI * 2;
+        const r = 3.2 + Math.sin(a * 3) * 0.75 + Math.cos(a * 5) * 0.45;
+        const x = Math.cos(a) * r;
+        const y = Math.sin(a) * r * 0.78;
+        if (i === 0) shape.moveTo(x, y);
+        else shape.splineThru([new THREE.Vector2(x, y)]);
+      }
+      const geo = new THREE.ShapeGeometry(shape, 20);
+      geo.rotateX(-Math.PI / 2);
+
+      const group = new THREE.Group();
+      const mudBorder = new THREE.Mesh(
+        geo.clone().scale(1.16, 1, 1.16),
+        new THREE.MeshStandardMaterial({ color: 0x6e4e2c, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -1 })
+      );
+      const water = new THREE.Mesh(
+        geo,
+        new THREE.MeshPhysicalMaterial({
+          color: 0x18b4d8,
+          roughness: 0.08,
+          metalness: 0.1,
+          clearcoat: 1.0,
+          transparent: true,
+          opacity: 0.86,
+          polygonOffset: true,
+          polygonOffsetFactor: -2
+        })
+      );
+      water.position.y = 0.02;
+      group.add(mudBorder, water);
+      return group;
+    }
+
+    const puddleSpots = [0.09, 0.54, 0.82];
+    puddleSpots.forEach(u => {
+      const s = trackSamples[Math.floor(u * TRACK_SAMPLES)];
+      const pos = s.point.clone().addScaledVector(s.right, 3.2);
+      const puddle = createOrganicPuddleMesh();
+      puddle.position.set(pos.x, pos.y + 0.12, pos.z);
+      puddle.rotation.y = Math.atan2(s.tangent.x, s.tangent.z);
+      scene.add(puddle);
+      waterPuddles.push({ pos: puddle.position.clone(), mesh: puddle });
+    });
+
+    const barrelSpots = [0.18, 0.58, 0.92];
+    const barrelMat = new THREE.MeshStandardMaterial({ color: 0xE1254B, roughness: 0.4 });
+    barrelSpots.forEach(u => {
+      const s = trackSamples[Math.floor(u * TRACK_SAMPLES)];
+      const pos = s.point.clone().addScaledVector(s.right, -3.6);
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 2.2, 16), barrelMat);
+      barrel.position.set(pos.x, pos.y + 1.15, pos.z);
+      barrel.castShadow = true;
+      scene.add(barrel);
+      barrels.push({ mesh: barrel, pos: barrel.position.clone(), hitCooldown: 0 });
+    });
+
+    // =========================================================================
+    // 11. DETAILED 3D BEACH BUGGY #7 (PLAYER) & 3 RIVAL KARTS
+    // =========================================================================
+    function createBuggyKart({ bodyColor = 0xE1254B, trimColor = 0x3894D1, numberStr = '7', driverType = 'gecko' }) {
+      const root = new THREE.Group();
+      const bodyGroup = new THREE.Group();
+      root.add(bodyGroup);
+
+      const chassisMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.28, metalness: 0.25 });
+      const trimMat = new THREE.MeshStandardMaterial({ color: trimColor, roughness: 0.35, metalness: 0.2 });
+      const chromeMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.18, metalness: 0.85 });
+
+      const baseBody = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.85, 4.4), chassisMat);
+      baseBody.position.y = 0.95;
+      baseBody.castShadow = true;
+      bodyGroup.add(baseBody);
+
+      const hood = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.65, 1.9), chassisMat);
+      hood.position.set(0, 1.25, 1.15);
+      hood.rotation.x = 0.24;
+      bodyGroup.add(hood);
+
+      const decalTex = createNumberDecalTexture(numberStr);
+      const decalMat = new THREE.MeshStandardMaterial({ map: decalTex, roughness: 0.3, polygonOffset: true, polygonOffsetFactor: -2 });
+      const hoodDecal = new THREE.Mesh(new THREE.CircleGeometry(0.68, 24), decalMat);
+      hoodDecal.rotation.x = -Math.PI / 2 + 0.24;
+      hoodDecal.position.set(0, 1.62, 1.22);
+      bodyGroup.add(hoodDecal);
+
+      [-1.35, 1.35].forEach(xSide => {
+        const fender = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 3.8), trimMat);
+        fender.position.set(xSide, 1.05, 0);
+        bodyGroup.add(fender);
+      });
+
+      const cage = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.11, 10, 20, Math.PI), chromeMat);
+      cage.position.set(0, 1.45, -0.35);
+      bodyGroup.add(cage);
+
+      const wing = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.18, 0.85), chassisMat);
+      wing.position.set(0, 2.25, -2.05);
+      wing.rotation.x = -0.18;
+      bodyGroup.add(wing);
+
+      const exhaustFlames = [];
+      [-0.55, 0.55].forEach(xPipe => {
+        const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.9, 12), chromeMat);
+        pipe.rotation.x = Math.PI / 2 + 0.2;
+        pipe.position.set(xPipe, 1.15, -2.35);
+        bodyGroup.add(pipe);
+
+        const flame = new THREE.Mesh(
+          new THREE.ConeGeometry(0.26, 1.35, 12),
+          new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.0 })
+        );
+        flame.rotation.x = -Math.PI / 2;
+        flame.position.set(xPipe, 1.1, -3.1);
+        bodyGroup.add(flame);
+        exhaustFlames.push(flame);
+      });
+
+      const lampMat = new THREE.MeshStandardMaterial({ color: 0xfff3b0, emissive: 0xffd700, emissiveIntensity: 1.5 });
+      [-0.85, 0.85].forEach(xLamp => {
+        const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 12), lampMat);
+        lamp.position.set(xLamp, 1.18, 2.22);
+        bodyGroup.add(lamp);
+      });
+
+      const driverGroup = new THREE.Group();
+      driverGroup.position.set(0, 1.45, -0.15);
+      const skinColor = driverType === 'gecko' ? 0x52b788 : (driverType === 'koala' ? 0x94a3b8 : 0xf59e0b);
+      const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.5 });
+
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.52, 0.9, 12), skinMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 16), skinMat);
+      head.position.y = 0.85;
+      driverGroup.add(torso, head);
+
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.64, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), trimMat);
+      cap.position.y = 0.92;
+      driverGroup.add(cap);
+
+      const glasses = new THREE.Mesh(
+        new THREE.BoxGeometry(0.88, 0.26, 0.25),
+        new THREE.MeshStandardMaterial({ color: 0x111827, metalness: 0.9, roughness: 0.1 })
+      );
+      glasses.position.set(0, 0.86, 0.52);
+      driverGroup.add(glasses);
+      bodyGroup.add(driverGroup);
+
+      const wheelMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.85 });
+      const rimMat = new THREE.MeshStandardMaterial({ color: 0xFFD700, metalness: 0.8, roughness: 0.25 });
+      const wheels = [];
+      const wheelOffsets = [
+        { x: -1.55, y: 0.72, z: 1.45, front: true },
+        { x:  1.55, y: 0.72, z: 1.45, front: true },
+        { x: -1.62, y: 0.78, z: -1.45, front: false },
+        { x:  1.62, y: 0.78, z: -1.45, front: false }
+      ];
+
+      wheelOffsets.forEach(wo => {
+        const pivot = new THREE.Group();
+        pivot.position.set(wo.x, wo.y, wo.z);
+
+        const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.82, 20), wheelMat);
+        tire.rotation.z = Math.PI / 2;
+        tire.castShadow = true;
+
+        const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.86, 12), rimMat);
+        rim.rotation.z = Math.PI / 2;
+        tire.add(rim);
+
+        pivot.add(tire);
+        root.add(pivot);
+        wheels.push({ pivot, tire, front: wo.front, baseY: wo.y });
+      });
+
+      return { root, bodyGroup, driverGroup, wheels, exhaustFlames };
+    }
+
+    // =========================================================================
+    // 11B. PERSONAJE 1 RALLY 3D GLB RIG (SEGMENTED PARTS, ROLLING WHEELS & LEAN)
+    // =========================================================================
+    function setupPersonajeRallyModel(gltfScene) {
+      const parts = {};
+      gltfScene.traverse(obj => {
+        if (obj.isMesh && obj.name) {
+          parts[obj.name] = obj;
+          // Cast shadow only from main chassis (tripo_part_2) to avoid rendering 990k vertices twice per frame
+          obj.castShadow = (obj.name === 'tripo_part_2');
+          obj.receiveShadow = false;
+          if (obj.material) {
+            obj.material.roughness = Math.min(obj.material.roughness ?? 0.5, 0.65);
+            obj.material.metalness = Math.max(obj.material.metalness ?? 0.1, 0.2);
+            obj.material.side = THREE.DoubleSide;
+          }
+        }
+      });
+
+      const kartRig = new THREE.Group();
+
+      // Root model container oriented so GLB's +X aligns with Rally's +Z
+      const modelRoot = new THREE.Group();
+      modelRoot.rotation.y = -Math.PI / 2;
+      const KART_SCALE = 5.25;
+      modelRoot.scale.setScalar(KART_SCALE);
+      // GLB wheel bottom is at y ~ -0.428, so shifting by +0.428 * KART_SCALE places tires on road surface (y = 0)
+      modelRoot.position.set(0, 0.428 * KART_SCALE, 0);
+      kartRig.add(modelRoot);
+
+      // Chassis & body group (carrocería)
+      const bodyGroup = new THREE.Group();
+      modelRoot.add(bodyGroup);
+
+      const fixedPartNames = [
+        'tripo_part_2', 'tripo_part_3', 'tripo_part_14', 'tripo_part_10',
+        'tripo_part_17', 'tripo_part_18', 'tripo_part_5',
+        'tripo_part_6', 'tripo_part_8', 'tripo_part_9', 'tripo_part_16'
+      ];
+      fixedPartNames.forEach(name => {
+        if (parts[name]) {
+          bodyGroup.add(parts[name]);
+        }
+      });
+
+      // 4 Segmented Wheels
+      // In GLB:
+      // Front Left: tripo_part_13 (x ~ +0.30, z ~ +0.29)
+      // Front Right: tripo_part_11 (x ~ +0.29, z ~ -0.29)
+      // Rear Left:  tripo_part_1  (x ~ -0.27, z ~ +0.28)
+      // Rear Right: tripo_part_12 (x ~ -0.27, z ~ -0.28)
+      const wheelDefs = [
+        { name: 'tripo_part_13', front: true,  side: 'left' },
+        { name: 'tripo_part_11', front: true,  side: 'right' },
+        { name: 'tripo_part_1',  front: false, side: 'left' },
+        { name: 'tripo_part_12', front: false, side: 'right' }
+      ];
+
+      const wheels = [];
+      wheelDefs.forEach(def => {
+        const mesh = parts[def.name];
+        if (!mesh) return;
+
+        const pivot = new THREE.Group();
+        const basePos = mesh.position.clone();
+        pivot.position.copy(basePos);
+        modelRoot.add(pivot);
+
+        // Center wheel mesh inside pivot so it rotates cleanly on its axle
+        mesh.position.set(0, 0, 0);
+        pivot.add(mesh);
+
+        wheels.push({
+          mesh,
+          pivot,
+          front: def.front,
+          side: def.side,
+          baseY: basePos.y,
+          baseX: basePos.x,
+          baseZ: basePos.z
+        });
+      });
+
+      // Driver Rig (Personaje Principal)
+      // tripo_part_0 is the main character (head, cap, sunglasses, torso)
+      const driverMesh = parts['tripo_part_0'];
+      const driverPivot = new THREE.Group();
+      let driverBaseY = 0;
+      if (driverMesh) {
+        const dPos = driverMesh.position.clone();
+        // Pivot at hips / base of seat
+        driverPivot.position.set(dPos.x, dPos.y - 0.18, dPos.z);
+        driverBaseY = driverPivot.position.y;
+        bodyGroup.add(driverPivot);
+
+        driverMesh.position.set(0, 0.18, 0);
+        driverPivot.add(driverMesh);
+      }
+
+      // Steering Wheel Rig
+      // tripo_part_7 is the steering wheel
+      const steerMesh = parts['tripo_part_7'];
+      const steerPivot = new THREE.Group();
+      if (steerMesh) {
+        const sPos = steerMesh.position.clone();
+        steerPivot.position.copy(sPos);
+        bodyGroup.add(steerPivot);
+
+        steerMesh.position.set(0, 0, 0);
+        steerPivot.add(steerMesh);
+      }
+
+      // Arms: tripo_part_4 (left arm) and tripo_part_15 (right arm)
+      const armL = parts['tripo_part_4'];
+      const armR = parts['tripo_part_15'];
+      if (armL) bodyGroup.add(armL);
+      if (armR) bodyGroup.add(armR);
+
+      return {
+        kartRig,
+        modelRoot,
+        bodyGroup,
+        driverPivot,
+        driverMesh,
+        driverBaseY,
+        steerPivot,
+        steerMesh,
+        armL,
+        armR,
+        wheels,
+        kartScale: KART_SCALE
+      };
+    }
+
+    async function loadPlayerBuggyGLB(playerKart) {
+      try {
+        if (MeshoptDecoder && MeshoptDecoder.ready) {
+          await MeshoptDecoder.ready;
+        }
+        const loader = new GLTFLoader();
+        if (MeshoptDecoder) {
+          loader.setMeshoptDecoder(MeshoptDecoder);
+        }
+
+        const candidatePaths = [
+          'models/personaje1rally.glb',
+          '../models/personaje1rally.glb',
+          'models/Personaje1Rallytripo_mesh_seg_938a1018-a8da-4810-a514-1e984972905c_meshopt.glb',
+          '../models/Personaje1Rallytripo_mesh_seg_938a1018-a8da-4810-a514-1e984972905c_meshopt.glb'
+        ];
+
+        let gltf = null;
+        for (const p of candidatePaths) {
+          try {
+            gltf = await new Promise((resolve, reject) => {
+              loader.load(p, resolve, undefined, reject);
+            });
+            if (gltf && gltf.scene) {
+              console.log('✅ Personaje Principal cargado exitosamente desde:', p);
+              break;
+            }
+          } catch (e) {
+            // try next path
+          }
+        }
+
+        if (!gltf || !gltf.scene) {
+          console.warn('No se pudo cargar el modelo GLB de Personaje1Rally. Se mantiene el buggy procedural.');
+          return;
+        }
+
+        const customRig = setupPersonajeRallyModel(gltf.scene);
+
+        // Hide procedural body and wheels of player kart
+        playerKart.bodyGroup.visible = false;
+        playerKart.wheels.forEach(w => {
+          w.pivot.visible = false;
+        });
+
+        // Add custom GLB rig to playerKart.root
+        playerKart.root.add(customRig.kartRig);
+        playerKart.customRig = customRig;
+
+      } catch (err) {
+        console.error('Error al inicializar Personaje1Rally:', err);
+      }
+    }
+
+    const playerKart = createBuggyKart({ bodyColor: 0xE1254B, trimColor: 0x3894D1, numberStr: '7', driverType: 'gecko' });
+    scene.add(playerKart.root);
+    loadPlayerBuggyGLB(playerKart);
+
+    const rivalConfigs = [
+      { bodyColor: 0xf472b6, trimColor: 0xfef08a, numberStr: '8', driverType: 'koala', u: 0.985, lane: -3.8, speed: 35 },
+      { bodyColor: 0x22c55e, trimColor: 0xfbbf24, numberStr: '5', driverType: 'toucan', u: 0.975, lane: 3.8, speed: 34 },
+      { bodyColor: 0xf97316, trimColor: 0x38bdf8, numberStr: '3', driverType: 'turtle', u: 0.965, lane: 0.0, speed: 33 }
+    ];
+    const rivals = rivalConfigs.map(cfg => {
+      const kart = createBuggyKart(cfg);
+      scene.add(kart.root);
+      return { ...cfg, kart, lap: 1 };
+    });
+
+    // =========================================================================
+    // 12. PARTICLE SYSTEM (SAND DUST, DRIFT SPARKS, COIN BURSTS)
+    // =========================================================================
+    const particles = [];
+    const particleGeo = new THREE.SphereGeometry(0.35, 6, 6);
+
+    function spawnParticle(pos, vel, color, scale = 1, life = 0.55) {
+      if (particles.length > 90) return;
+      const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85 });
+      const mesh = new THREE.Mesh(particleGeo, mat);
+      mesh.position.copy(pos);
+      mesh.scale.setScalar(scale);
+      scene.add(mesh);
+      particles.push({ mesh, vel: vel.clone(), life, maxLife: life });
+    }
+
+    // =========================================================================
+    // 13. GAME STATE, CONTROLS & PHYSICS ENGINE
+    // =========================================================================
+    const keys = { up: false, down: false, left: false, right: false, drift: false, nitro: false };
+    const difficultyPresets = {
+      easy:   { time: 115, aiMult: 0.86 },
+      normal: { time: 95,  aiMult: 1.0  },
+      hard:   { time: 78,  aiMult: 1.12 }
+    };
+    let currentDifficulty = 'normal';
+    let islandOverviewMode = true;
+
+    const state = {
+      running: false,
+      completed: false,
+      score: 0,
+      coins: 0,
+      chests: 0,
+      timeRemaining: 95,
+      lap: 1,
+      totalLaps: 2,
+      u: 0.0,
+      checkpointIndex: 0,
+      speed: 0,
+      maxSpeed: 54,
+      heading: 0,
+      steerAngle: 0,
+      drifting: false,
+      driftCharge: 0,
+      nitro: 65,
+      nitroActive: false,
+      boostTimer: 0,
+      position: new THREE.Vector3(),
+      velocityY: 0
+    };
+
+    function resetPlayerToStart() {
+      const s0 = trackSamples[0];
+      state.u = 0.0;
+      state.position.copy(s0.point);
+      state.heading = Math.atan2(s0.tangent.x, s0.tangent.z);
+      state.speed = 0;
+      state.steerAngle = 0;
+      state.nitro = 65;
+      state.nitroActive = false;
+      state.boostTimer = 0;
+      state.lap = 1;
+      state.checkpointIndex = 0;
+      playerKart.root.position.copy(state.position);
+      playerKart.root.rotation.y = state.heading;
+
+      rivals.forEach((r, idx) => {
+        r.u = 0.985 - idx * 0.01;
+        r.lap = 1;
+      });
+    }
+    resetPlayerToStart();
+
+    window.addEventListener('keydown', e => {
+      const code = e.code;
+      if (code === 'KeyW' || code === 'ArrowUp') keys.up = true;
+      if (code === 'KeyS' || code === 'ArrowDown') keys.down = true;
+      if (code === 'KeyA' || code === 'ArrowLeft') keys.left = true;
+      if (code === 'KeyD' || code === 'ArrowRight') keys.right = true;
+      if (code === 'ShiftLeft' || code === 'ShiftRight') keys.drift = true;
+      if (code === 'Space') keys.nitro = true;
+      if (code === 'KeyV') {
+        islandOverviewMode = !islandOverviewMode;
+        document.getElementById('btn-camera').textContent = islandOverviewMode ? '🏎️ VISTA KART' : '🗺️ VISTA ISLA';
+      }
+      if (code === 'Escape') {
+        window.location.href = '../index.html';
+      }
+    });
+
+    window.addEventListener('keyup', e => {
+      const code = e.code;
+      if (code === 'KeyW' || code === 'ArrowUp') keys.up = false;
+      if (code === 'KeyS' || code === 'ArrowDown') keys.down = false;
+      if (code === 'KeyA' || code === 'ArrowLeft') keys.left = false;
+      if (code === 'KeyD' || code === 'ArrowRight') keys.right = false;
+      if (code === 'ShiftLeft' || code === 'ShiftRight') keys.drift = false;
+      if (code === 'Space') keys.nitro = false;
+    });
+
+    function bindTouchButton(id, keyName) {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      const setKey = val => {
+        keys[keyName] = val;
+        btn.classList.toggle('active', val);
+      };
+      btn.addEventListener('pointerdown', e => { e.preventDefault(); setKey(true); });
+      btn.addEventListener('pointerup', e => { e.preventDefault(); setKey(false); });
+      btn.addEventListener('pointerleave', () => setKey(false));
+    }
+    bindTouchButton('t-left', 'left');
+    bindTouchButton('t-right', 'right');
+    bindTouchButton('t-gas', 'up');
+    bindTouchButton('t-brake', 'down');
+    bindTouchButton('t-drift', 'drift');
+    bindTouchButton('t-nitro', 'nitro');
+
+    const bannerEl = document.getElementById('banner-toast');
+    let bannerTimeout = null;
+    function showBanner(msg) {
+      bannerEl.textContent = msg;
+      bannerEl.classList.add('show');
+      clearTimeout(bannerTimeout);
+      bannerTimeout = setTimeout(() => bannerEl.classList.remove('show'), 1800);
+    }
+
+    function startGame() {
+      audio.init();
+      const preset = difficultyPresets[currentDifficulty];
+      state.score = 0;
+      state.coins = 0;
+      state.chests = 0;
+      state.timeRemaining = preset.time;
+      state.completed = false;
+      state.running = true;
+      islandOverviewMode = false;
+      document.getElementById('btn-camera').textContent = '🗺️ VISTA ISLA';
+      document.getElementById('start-modal').classList.add('hidden');
+      document.getElementById('end-modal').classList.add('hidden');
+
+      coins.forEach(c => { c.active = true; c.mesh.visible = true; });
+      chests.forEach(c => { c.active = true; c.mesh.visible = true; });
+      resetPlayerToStart();
+      showBanner('🚦 ¡ARRANCA EL RALLY!');
+    }
+
+    function finishGame(victory) {
+      state.running = false;
+      state.completed = victory;
+      audio.updateEngine(0, false, false);
+      document.getElementById('speed-lines').style.opacity = '0';
+
+      if (victory) {
+        const timeBonus = Math.round(state.timeRemaining * 40);
+        state.score += 1500 + timeBonus;
+      }
+
+      const stars = victory ? (state.score > 5500 ? '⭐⭐⭐' : state.score > 3200 ? '⭐⭐' : '⭐') : '💥';
+      document.getElementById('end-badge').textContent = victory ? '🏆 ¡RÉCORD GEPICLUB ARCADE!' : '⏱️ TIEMPO AGOTADO';
+      document.getElementById('end-title').textContent = victory ? '¡META ALCANZADA!' : '¡INTÉNTALO DE NUEVO!';
+      document.getElementById('end-stars').textContent = stars;
+      document.getElementById('end-summary').textContent =
+        `Puntos: ${state.score} • Monedas: ${state.coins} • Cofres: ${state.chests} • Tiempo restante: ${state.timeRemaining.toFixed(1)}s`;
+      document.getElementById('end-modal').classList.remove('hidden');
+    }
+
+    document.querySelectorAll('.diff-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentDifficulty = btn.dataset.diff;
+      });
+    });
+
+    document.getElementById('btn-start-race').addEventListener('click', startGame);
+    document.getElementById('btn-restart-race').addEventListener('click', startGame);
+    document.getElementById('btn-camera').addEventListener('click', () => {
+      islandOverviewMode = !islandOverviewMode;
+      document.getElementById('btn-camera').textContent = islandOverviewMode ? '🏎️ VISTA KART' : '🗺️ VISTA ISLA';
+    });
+    document.getElementById('btn-mute').addEventListener('click', e => {
+      audio.muted = !audio.muted;
+      e.currentTarget.textContent = audio.muted ? '🔇' : '🔊';
+    });
+
+    // =========================================================================
+    // 14. MAIN ANIMATION & SIMULATION LOOP (60 FPS)
+    // =========================================================================
+    let lastTime = performance.now();
+
+    function updateSimulation(dt, elapsed) {
+      skyUniforms.uTime.value = elapsed;
+      terrainUniforms.uTime.value = elapsed;
+      oceanUniforms.uTime.value = elapsed;
+      cloudGroup.rotation.y = elapsed * 0.008;
+
+      smokePuffs.forEach(sp => {
+        sp.mesh.position.y = sp.baseY + ((elapsed * 9 + sp.phase * 10) % 42);
+        const s = 1 + ((sp.mesh.position.y - sp.baseY) / 42) * 1.4;
+        sp.mesh.scale.setScalar(s);
+      });
+      oceanMesh.position.y = 1.6 + Math.sin(elapsed * 1.8) * 0.14;
+
+      coins.forEach(c => {
+        if (!c.active) {
+          c.respawnTimer -= dt;
+          if (c.respawnTimer <= 0) { c.active = true; c.mesh.visible = true; }
+          return;
+        }
+        c.mesh.rotation.y += dt * 3.2;
+        c.mesh.position.y = c.basePos.y + Math.sin(elapsed * 4 + c.basePos.x) * 0.25;
+      });
+
+      chests.forEach(ch => {
+        if (!ch.active) {
+          ch.respawnTimer -= dt;
+          if (ch.respawnTimer <= 0) { ch.active = true; ch.mesh.visible = true; }
+          return;
+        }
+        ch.mesh.rotation.y += dt * 1.8;
+      });
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.life -= dt;
+        if (p.life <= 0) {
+          scene.remove(p.mesh);
+          p.mesh.material.dispose();
+          particles.splice(i, 1);
+          continue;
+        }
+        p.mesh.position.addScaledVector(p.vel, dt);
+        p.mesh.material.opacity = (p.life / p.maxLife) * 0.85;
+        p.mesh.scale.multiplyScalar(1.02);
+      }
+
+      const aiMult = difficultyPresets[currentDifficulty].aiMult;
+      rivals.forEach(r => {
+        const step = ((r.speed * aiMult) / 1150) * dt;
+        const prevU = r.u;
+        r.u = (r.u + step) % 1.0;
+        if (prevU > 0.9 && r.u < 0.1) r.lap++;
+        const s = trackSamples[Math.floor(r.u * TRACK_SAMPLES)];
+        const pos = s.point.clone().addScaledVector(s.right, r.lane);
+        r.kart.root.position.copy(pos);
+        r.kart.root.rotation.y = Math.atan2(s.tangent.x, s.tangent.z);
+        r.kart.wheels.forEach(w => { w.tire.rotation.x += dt * 14; });
+      });
+
+      if (!state.running) return;
+
+      state.timeRemaining = Math.max(0, state.timeRemaining - dt);
+      if (state.timeRemaining <= 0) {
+        finishGame(false);
+        return;
+      }
+
+      const accel = 44;
+      const brake = 52;
+      const drag = 14;
+
+      if (keys.nitro && state.nitro >= 12 && !state.nitroActive) {
+        state.nitroActive = true;
+        audio.playNitro();
+      }
+      if (state.nitroActive) {
+        state.nitro = Math.max(0, state.nitro - dt * 34);
+        if (state.nitro <= 0 || !keys.nitro) state.nitroActive = false;
+      }
+
+      if (state.boostTimer > 0) state.boostTimer -= dt;
+      const boosting = state.nitroActive || state.boostTimer > 0;
+      const topSpeed = boosting ? state.maxSpeed * 1.42 : state.maxSpeed;
+
+      if (keys.up || boosting) {
+        state.speed = Math.min(topSpeed, state.speed + (boosting ? accel * 1.85 : accel) * dt);
+      } else if (keys.down) {
+        state.speed = Math.max(-20, state.speed - brake * dt);
+      } else {
+        if (state.speed > 0) state.speed = Math.max(0, state.speed - drag * dt);
+        else if (state.speed < 0) state.speed = Math.min(0, state.speed + drag * dt);
+      }
+
+      const steerInput = (keys.left ? 1 : 0) - (keys.right ? 1 : 0);
+      state.drifting = keys.drift && Math.abs(state.speed) > 18 && Math.abs(steerInput) > 0;
+      const turnRate = state.drifting ? 2.45 : 1.75;
+      const speedFactor = Math.min(1, Math.abs(state.speed) / 14);
+      state.steerAngle = THREE.MathUtils.lerp(state.steerAngle, steerInput * 0.52, dt * 10);
+      state.heading += steerInput * turnRate * speedFactor * Math.sign(state.speed || 1) * dt;
+
+      if (state.drifting) {
+        state.nitro = Math.min(100, state.nitro + dt * 18);
+        state.score += Math.round(dt * 45);
+      }
+
+      const forward = new THREE.Vector3(Math.sin(state.heading), 0, Math.cos(state.heading));
+      state.position.addScaledVector(forward, state.speed * dt);
+
+      const sample = getClosestTrackSample(state.position, state.u);
+      const prevU = state.u;
+      state.u = sample.u;
+
+      if (state.checkpointIndex === 0 && state.u > 0.32 && state.u < 0.45) {
+        state.checkpointIndex = 1;
+        state.timeRemaining += 10;
+        showBanner('🌉 CHECKPOINT BRIDGE +10s');
+      } else if (state.checkpointIndex === 1 && state.u > 0.65 && state.u < 0.80) {
+        state.checkpointIndex = 2;
+        state.timeRemaining += 12;
+        showBanner('🌋 CHECKPOINT VOLCANO +12s');
+      } else if (state.checkpointIndex === 2 && prevU > 0.88 && state.u < 0.12) {
+        state.checkpointIndex = 0;
+        if (state.lap < state.totalLaps) {
+          state.lap++;
+          state.timeRemaining += 18;
+          showBanner(`🏁 ¡VUELTA ${state.lap}/${state.totalLaps}! +18s`);
+        } else {
+          finishGame(true);
+          return;
+        }
+      }
+
+      const toPlayer = new THREE.Vector3().subVectors(state.position, sample.point);
+      const lateralOffset = toPlayer.dot(sample.right);
+      const maxOffset = TRACK_HALF_WIDTH - 1.4;
+      if (Math.abs(lateralOffset) > maxOffset) {
+        const clamped = Math.sign(lateralOffset) * maxOffset;
+        state.position.x = sample.point.x + sample.right.x * clamped;
+        state.position.z = sample.point.z + sample.right.z * clamped;
+        state.speed *= 0.91;
+        const trackYaw = Math.atan2(sample.tangent.x, sample.tangent.z);
+        let diff = trackYaw - state.heading;
+        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        state.heading += diff * 0.22;
+      }
+
+      state.position.y = THREE.MathUtils.lerp(state.position.y, sample.point.y, dt * 16);
+      playerKart.root.position.copy(state.position);
+      playerKart.root.rotation.y = state.heading - (state.drifting ? steerInput * 0.26 : 0);
+
+      if (playerKart.customRig) {
+        const rig = playerKart.customRig;
+        const rollDelta = (state.speed * dt) / (0.13 * rig.kartScale);
+
+        // 1. All 4 wheels spin on their axle (Z axis in local GLB space)
+        rig.wheels.forEach((w, idx) => {
+          w.mesh.rotation.z -= rollDelta;
+          // Front wheels physically steer into corners
+          if (w.front) {
+            w.pivot.rotation.y = THREE.MathUtils.lerp(w.pivot.rotation.y, -state.steerAngle, dt * 14);
+          }
+          // Suspension vibration on sand & bumps
+          const suspensionBounce = Math.sin(elapsed * 24 + idx * 1.5) * (Math.abs(state.speed) / state.maxSpeed) * 0.012;
+          w.pivot.position.y = w.baseY + suspensionBounce;
+        });
+
+        // 2. Character movement when steering (El personaje se mueva al guiar)
+        if (rig.driverPivot) {
+          // Dynamic bank / lean into turns
+          const targetLean = steerInput * 0.28;
+          rig.driverPivot.rotation.x = THREE.MathUtils.lerp(rig.driverPivot.rotation.x, targetLean, dt * 10);
+
+          // Head & eyes look towards corner apex
+          const targetLook = -steerInput * 0.22;
+          rig.driverPivot.rotation.y = THREE.MathUtils.lerp(rig.driverPivot.rotation.y, targetLook, dt * 8);
+
+          // Acceleration squat / brake dive (lean back during nitro, forward on brake)
+          const targetPitch = boosting ? 0.12 : (keys.down ? -0.14 : 0.0);
+          rig.driverPivot.rotation.z = THREE.MathUtils.lerp(rig.driverPivot.rotation.z, targetPitch, dt * 8);
+
+          // Idle breathing and engine vibration
+          const bumpBounce = (Math.abs(state.speed) > 5)
+            ? Math.sin(elapsed * 26) * 0.008
+            : Math.sin(elapsed * 3.5) * 0.004;
+          rig.driverPivot.position.y = rig.driverBaseY + bumpBounce;
+        }
+
+        // 3. Steering wheel turns with player input
+        if (rig.steerPivot) {
+          rig.steerPivot.rotation.x = THREE.MathUtils.lerp(rig.steerPivot.rotation.x, -state.steerAngle * 0.85, dt * 12);
+          rig.steerPivot.rotation.y = THREE.MathUtils.lerp(rig.steerPivot.rotation.y, -state.steerAngle * 0.44, dt * 12);
+        }
+
+        // 4. Arms follow steering wheel
+        if (rig.armL) {
+          rig.armL.rotation.x = THREE.MathUtils.lerp(rig.armL.rotation.x, steerInput * 0.16, dt * 10);
+        }
+        if (rig.armR) {
+          rig.armR.rotation.x = THREE.MathUtils.lerp(rig.armR.rotation.x, steerInput * 0.16, dt * 10);
+        }
+
+        // 5. Buggy chassis roll & pitch
+        if (rig.bodyGroup) {
+          rig.bodyGroup.rotation.x = THREE.MathUtils.lerp(rig.bodyGroup.rotation.x, steerInput * 0.07, dt * 8);
+          rig.bodyGroup.rotation.z = THREE.MathUtils.lerp(rig.bodyGroup.rotation.z, (boosting ? -0.06 : 0), dt * 8);
+        }
+      } else {
+        // Fallback procedural animation
+        playerKart.bodyGroup.rotation.z = THREE.MathUtils.lerp(playerKart.bodyGroup.rotation.z, -steerInput * 0.16, dt * 10);
+        playerKart.bodyGroup.rotation.x = THREE.MathUtils.lerp(playerKart.bodyGroup.rotation.x, (boosting ? -0.08 : 0), dt * 8);
+        playerKart.driverGroup.rotation.z = -steerInput * 0.25;
+
+        playerKart.wheels.forEach((w, idx) => {
+          w.tire.rotation.x += state.speed * dt * 0.65;
+          if (w.front) w.pivot.rotation.y = state.steerAngle;
+          w.pivot.position.y = w.baseY + Math.sin(elapsed * 22 + idx) * (Math.abs(state.speed) / state.maxSpeed) * 0.08;
+        });
+      }
+
+      playerKart.exhaustFlames.forEach(f => {
+        f.material.opacity = boosting ? 0.92 : 0.0;
+        f.scale.setScalar(boosting ? 0.9 + Math.random() * 0.45 : 0.1);
+      });
+      document.getElementById('speed-lines').style.opacity = boosting ? '0.95' : '0';
+
+      if (Math.abs(state.speed) > 12) {
+        const rearPos = state.position.clone().addScaledVector(forward, -2.1);
+        if (state.drifting) {
+          spawnParticle(rearPos, new THREE.Vector3((Math.random() - 0.5) * 6, 3, (Math.random() - 0.5) * 6), 0xFFD700, 0.55, 0.32);
+        } else if (Math.random() < 0.45) {
+          spawnParticle(rearPos, new THREE.Vector3((Math.random() - 0.5) * 4, 2, (Math.random() - 0.5) * 4), 0xc2965d, 0.9, 0.45);
+        }
+      }
+
+      coins.forEach(c => {
+        if (c.active && c.mesh.position.distanceToSquared(state.position) < 9.5) {
+          c.active = false;
+          c.mesh.visible = false;
+          c.respawnTimer = 14;
+          state.coins++;
+          state.score += 100;
+          audio.playCoin();
+          for (let k = 0; k < 5; k++) {
+            spawnParticle(c.mesh.position, new THREE.Vector3((Math.random() - 0.5) * 10, 6, (Math.random() - 0.5) * 10), 0xFFD700, 0.6, 0.4);
+          }
+        }
+      });
+
+      chests.forEach(ch => {
+        if (ch.active && ch.mesh.position.distanceToSquared(state.position) < 11) {
+          ch.active = false;
+          ch.mesh.visible = false;
+          ch.respawnTimer = 18;
+          state.chests++;
+          state.score += 350;
+          state.timeRemaining += 6;
+          state.nitro = Math.min(100, state.nitro + 45);
+          audio.playChest();
+          showBanner('🧰 ¡COFRE SORPRESA! +6s & NITRO');
+        }
+      });
+
+      boostPads.forEach(bp => {
+        if (bp.pos.distanceToSquared(state.position) < 16) {
+          if (state.boostTimer <= 0.1) audio.playNitro();
+          state.boostTimer = 1.35;
+          state.score += 25;
+        }
+      });
+
+      waterPuddles.forEach(wp => {
+        if (wp.pos.distanceToSquared(state.position) < 12) {
+          state.speed *= 0.94;
+          if (Math.abs(state.speed) > 10 && Math.random() < 0.5) {
+            spawnParticle(state.position, new THREE.Vector3((Math.random() - 0.5) * 8, 5, (Math.random() - 0.5) * 8), 0x00F0FF, 0.75, 0.35);
+          }
+        }
+      });
+
+      barrels.forEach(b => {
+        if (b.hitCooldown > 0) b.hitCooldown -= dt;
+        else if (b.pos.distanceToSquared(state.position) < 7.5) {
+          b.hitCooldown = 2.0;
+          state.speed *= 0.45;
+          audio.playImpact();
+          showBanner('💥 ¡CUIDADO CON LOS BARRILES!');
+        }
+      });
+
+      audio.updateEngine(Math.abs(state.speed) / state.maxSpeed, state.drifting, true);
+
+      const playerProg = state.lap + state.u;
+      let rank = 1;
+      rivals.forEach(r => {
+        if ((r.lap + r.u) > playerProg) rank++;
+      });
+
+      document.getElementById('hud-score').textContent = state.score;
+      document.getElementById('hud-coins').textContent = state.coins;
+      document.getElementById('hud-chests').textContent = state.chests;
+      document.getElementById('hud-lap').textContent = `${state.lap}/${state.totalLaps}`;
+      document.getElementById('hud-pos').textContent = `${rank}º/4`;
+      document.getElementById('hud-time').textContent = state.timeRemaining.toFixed(1);
+      document.getElementById('hud-speed').textContent = Math.round(Math.abs(state.speed) * 3.1);
+      document.getElementById('hud-sector').textContent = getSectorNameAtU(state.u);
+      document.getElementById('hud-nitro-bar').style.width = `${state.nitro}%`;
+      document.getElementById('hud-nitro-txt').textContent =
+        state.nitro >= 15 ? 'LISTO [ESPACIO]' : 'DERRAPA P/ CARGAR';
+    }
+
+    function updateCamera(dt, elapsed) {
+      if (islandOverviewMode || !state.running) {
+        const camAngle = elapsed * 0.08;
+        const targetCamPos = new THREE.Vector3(
+          Math.sin(camAngle) * 45 - 15,
+          215,
+          285
+        );
+        camera.position.lerp(targetCamPos, dt * 3.5);
+        camera.lookAt(0, 24, -10);
+      } else {
+        const forward = new THREE.Vector3(Math.sin(state.heading), 0, Math.cos(state.heading));
+        const desiredPos = state.position.clone()
+          .addScaledVector(forward, -12.5)
+          .add(new THREE.Vector3(0, 6.2, 0));
+        camera.position.lerp(desiredPos, dt * 9.5);
+
+        const lookTarget = state.position.clone()
+          .addScaledVector(forward, 10)
+          .add(new THREE.Vector3(0, 2.2, 0));
+        camera.lookAt(lookTarget);
+      }
+    }
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      const dt = Math.min(0.05, (now - lastTime) / 1000);
+      lastTime = now;
+      const elapsed = now * 0.001;
+
+      updateSimulation(dt, elapsed);
+      updateCamera(dt, elapsed);
+      renderer.render(scene, camera);
+    }
+
+    window.onload = function () {
+      requestAnimationFrame(animate);
+    };
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // =========================================================================
+    // 15. GEPICLUB ARCADE PORTAL INTEGRATION API
+    // =========================================================================
+    window.gepiBuggyGame = {
+      start: () => startGame(),
+      restart: () => startGame(),
+      getStats: () => ({
+        score: state.score,
+        coins: state.coins,
+        time: Number(state.timeRemaining.toFixed(2)),
+        completed: state.completed
+      })
+    };
+  </script>
+</body>
+</html>

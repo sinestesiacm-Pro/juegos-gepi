@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Gepiclub JetSki 3D — Rush & Win</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Space+Grotesk:wght@700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="Public/gepi-isotipo.png" />
+  <link rel="stylesheet" href="css/styles.css?v=2.7.4" />
+  <!-- Import Map for Three.js r160 & Addons -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+  <!-- 3D WebGL Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- Speed Lines / Screen Flash Vignette Overlay -->
+  <div id="fx-overlay" class="fx-overlay"></div>
+  <canvas id="speed-lines-canvas" class="speed-lines-canvas"></canvas>
+  <canvas id="water-droplets-canvas" class="water-droplets-canvas"></canvas>
+
+  <!-- TOP BRAND & OPERATOR TRIGGER (Long-press or Triple-click logo or press F2) -->
+  <header id="top-bar" class="top-bar hidden">
+    <div id="brand-trigger" class="brand-badge" title="Gepiclub Oficial">
+      <img src="Public/gepi-isotipo.png" alt="Gepiclub Logo" class="brand-logo" />
+      <div class="brand-text">
+        <span class="brand-title">GEPICLUB</span>
+        <span class="brand-sub">JETSKI RUSH 3D</span>
+      </div>
+    </div>
+
+    <!-- HUD: Progress & Distance (Visible during race) -->
+    <div id="race-progress-wrap" class="race-progress-wrap hidden">
+      <div class="progress-header">
+        <span>SALIDA</span>
+        <span id="distance-label">META: 1000m</span>
+        <span>RULETA FINAL</span>
+      </div>
+      <div class="progress-track">
+        <div id="progress-fill" class="progress-fill"></div>
+        <div id="progress-icon" class="progress-icon">
+          <svg viewBox="0 0 24 24" class="svg-progress" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 18c3 1 6-1 9 0s6 1 9 0" stroke="#3894D1" stroke-width="2.5"/><path d="M4 15l11-2 5 2-3 3H6z" fill="#E1254B" stroke="#E1254B"/><circle cx="14" cy="7" r="2" fill="#ffd700"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="top-controls">
+      <button id="btn-back-hub" class="nav-hub-btn" title="Volver al Menú Principal de Juegos">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Menú Juegos</span>
+      </button>
+      <button id="btn-audio" class="icon-btn" title="Sonido On/Off">
+        <svg class="ui-btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      </button>
+      <button id="btn-fullscreen" class="icon-btn" title="Pantalla Completa">
+        <svg class="ui-btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- IN-GAME HUD -->
+  <div id="hud-layer" class="hud-layer hidden">
+    <!-- Left Panel: Dual Energy Bar & Coins -->
+    <div class="hud-energy-panel">
+      <div class="energy-header">
+        <span class="energy-title"><svg class="tag-svg" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> ENERGÍA DE RULETA</span>
+        <span id="energy-pct" class="energy-pct">0%</span>
+      </div>
+      <div class="energy-bar-outer">
+        <div id="energy-bar-red" class="energy-bar-segment red" style="width: 0%"></div>
+        <div id="energy-bar-blue" class="energy-bar-segment blue" style="width: 0%"></div>
+        <div class="energy-bar-gloss"></div>
+      </div>
+      <div class="coin-counters">
+        <div class="coin-pill red-pill">
+          <span class="coin-dot red-dot"></span>
+          <span class="coin-name">MONEDAS NEÓN</span>
+          <strong id="count-red">0</strong>
+        </div>
+        <div class="coin-pill blue-pill">
+          <span class="coin-dot blue-dot"></span>
+          <span class="coin-name">CLUB VIP</span>
+          <strong id="count-blue">0</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel: Speedometer, Nitro Tank & Combo -->
+    <div class="hud-speed-panel">
+      <div id="combo-badge" class="combo-badge hidden">★ AIR TRICK +15% ENERGÍA!</div>
+      
+      <div class="speed-box">
+        <span id="speed-val" class="speed-val">0</span>
+        <span class="speed-unit">KM/H</span>
+      </div>
+
+      <!-- Dedicated Nitro Bar -->
+      <div class="hud-nitro-box">
+        <div class="nitro-header">
+          <span class="nitro-label"><svg class="tag-svg" viewBox="0 0 24 24" fill="#00e5ff"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> NITRO [ESPACIO]</span>
+          <span id="nitro-pct" class="nitro-pct">100%</span>
+        </div>
+        <div class="nitro-bar-outer">
+          <div id="nitro-bar-fill" class="nitro-bar-fill" style="width: 100%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Center: Controls Hint Bar -->
+    <div id="hud-controls-hint" class="hud-controls-hint">
+      <span><strong>A / D</strong> Girar</span>
+      <span class="hint-sep">·</span>
+      <span><strong>ESPACIO</strong> Nitro Boost</span>
+      <span class="hint-sep">·</span>
+      <span id="hint-air-stunt"><strong>EN EL AIRE:</strong> [W/A/S/D] Acrobacias</span>
+    </div>
+
+    <!-- Mobile / Touch Controls -->
+    <div class="touch-controls">
+      <button id="touch-left" class="touch-btn">◀</button>
+      <button id="touch-trick" class="touch-btn trick-btn hidden">★ TRUCO AÉREO</button>
+      <button id="touch-boost" class="touch-btn boost-btn">⚡ NITRO</button>
+      <button id="touch-right" class="touch-btn">▶</button>
+    </div>
+  </div>
+
+  <!-- FLOATING POPUP TEXT CONTAINER -->
+  <div id="floating-popups" class="floating-popups"></div>
+
+  <!-- MAIN INITIAL MENU / ARCADE PORTAL SCREEN -->
+  <section id="screen-hub" class="ui-screen active">
+    <!-- Futuristic Yacht / Observation Pavilion Canopy (Matching Reference Image Exact Clean Lines) -->
+    <div class="hub-canopy-overlay">
+      <svg class="hub-canopy-beams-svg" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none">
+        <defs>
+          <linearGradient id="chromeBeamGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff" />
+            <stop offset="20%" stop-color="#d0dbe5" />
+            <stop offset="50%" stop-color="#64748b" />
+            <stop offset="80%" stop-color="#1e293b" />
+            <stop offset="100%" stop-color="#090d16" />
+          </linearGradient>
+          <linearGradient id="beamHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+            <stop offset="100%" stop-color="#7dd3fc" stop-opacity="0.2" />
+          </linearGradient>
+        </defs>
+
+        <!-- Single Elegant Sweeping Top Overhead Bridge Beam (Exact Reference Image Arc) -->
+        <path d="M-40,40 Q960,-14 1960,40" stroke="url(#chromeBeamGrad)" stroke-width="16" stroke-linecap="round" />
+        <path d="M-40,36 Q960,-18 1960,36" stroke="url(#beamHighlight)" stroke-width="2.5" />
+
+        <!-- Single Elegant Bottom Curved Deck Railing -->
+        <path d="M-40,945 Q960,880 1960,945" stroke="url(#chromeBeamGrad)" stroke-width="15" stroke-linecap="round" />
+        <path d="M-40,941 Q960,876 1960,941" stroke="url(#beamHighlight)" stroke-width="2.5" />
+      </svg>
+    </div>
+
+    <!-- Top Left & Right Corner Floating Pills (Matching Reference Image) -->
+    <div class="hub-corner-pill hub-corner-left">
+      <img src="Public/gepi-isotipo.png" alt="Logo" class="hub-corner-logo" />
+      <span class="hub-corner-brand">GEPICLUB</span>
+      <span class="hub-corner-sep">/</span>
+      <span class="hub-corner-sub">JETSKI RUSH 3D</span>
+    </div>
+
+    <div class="hub-corner-pill hub-corner-right">
+        <button type="button" class="hub-quick-btn map-btn" id="btn-hub-dev-map" title="Mapa Referencial de Pista e Islas (Tecla M)">
+          <span class="quick-icon">🗺️</span>
+          <span>Mapa DEV</span>
+        </button>
+        <button type="button" class="hub-quick-btn aerial-btn" id="btn-hub-aerial" title="Vista Aérea del Circuito (1800m)">
+          <span class="quick-icon">🚁</span>
+          <span>Vista Aérea</span>
+        </button>
+        <button type="button" class="hub-quick-btn info-btn" title="Menú de Juegos">
+          <span class="quick-icon">ℹ️</span>
+          <span>Menú Juegos</span>
+        </button>
+        <button type="button" class="hub-quick-btn icon-btn" id="btn-hub-audio" title="Alternar Sonido">
+          <span id="hub-audio-icon">🔊</span>
+        </button>
+        <button type="button" class="hub-quick-btn icon-btn" id="btn-hub-fullscreen" title="Pantalla Completa">
+          <span>⛶</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Top Metallic Console Plaque & Subtitle Capsule -->
+    <header class="hub-console-header">
+      <div class="hub-console-plaque">
+        <img src="Public/gepi-isotipo.png" alt="Gepiclub Logo" class="hub-plaque-logo" />
+        <h1 class="hub-plaque-title">GEPI<span class="hub-txt-blue">CLUB</span></h1>
+        <span class="hub-plaque-badge">ARCADE</span>
+      </div>
+      <p class="hub-console-subpill">
+        Portal oficial de entretenimiento. Selecciona una experiencia para competir y ganar premios exclusivos.
+      </p>
+    </header>
+
+    <!-- Panoramic 3D Curved Triptych Cards Grid -->
+    <div class="hub-panoramic-container">
+      <!-- GAME 1: JETSKI TROPICAL RUSH (ACTIVO) -->
+      <article class="hub-pano-card card-jetski active-game" id="card-game-jetski" onclick="if(window.gepiGame){ window.gepiGame.launchJetSkiFromHub(); }">
+        <div class="hub-card-art-box">
+          <img src="Public/cards/art_jetski.jpg" alt="Jetski Tropical Rush" class="hub-card-art-img" />
+          <div class="hub-card-status-badge available">DISPONIBLE</div>
+        </div>
+        <div class="hub-card-content">
+          <h2 class="hub-card-title">JETSKI TROPICAL RUSH</h2>
+          <div class="hub-card-perks">
+            <span class="hub-perk-item"><span class="perk-sym">⚡</span> Energia Dual</span>
+            <span class="hub-perk-item"><span class="perk-sym">🎡</span> Rule-ta VIP</span>
+            <span class="hub-perk-item"><span class="perk-sym">🏝️</span> Caribe 3D</span>
+          </div>
+          <button id="btn-launch-jetski" class="hub-card-btn-action active-btn" onclick="event.stopPropagation(); if(window.gepiGame){ window.gepiGame.launchJetSkiFromHub(); }">
+            <span>¡JUGAR AHORA!</span>
+            <span class="hub-btn-chevron">&gt;</span>
+          </button>
+        </div>
+      </article>
+
+      <!-- GAME 2: BEACH BUGGY RALLY (ACTIVO) -->
+      <article class="hub-pano-card card-buggy active-game" id="card-game-buggy" onclick="if(window.gepiGame){ window.gepiGame.launchBuggyFromHub(); } else { window.location.href='Rally/beach_buggy_rally_dunas_resort_3d.html'; }">
+        <div class="hub-card-art-box">
+          <img src="Public/cards/art_buggy.jpg" alt="Beach Buggy Rally" class="hub-card-art-img" />
+          <div class="hub-card-status-badge available">DISPONIBLE</div>
+        </div>
+        <div class="hub-card-content">
+          <h2 class="hub-card-title buggy-title">BEACH BUGGY RALLY</h2>
+          <div class="hub-card-perks">
+            <span class="hub-perk-item"><span class="perk-sym">⏱️</span> Contrarreloj</span>
+            <span class="hub-perk-item"><span class="perk-sym">📦</span> Cofres Extra</span>
+            <span class="hub-perk-item"><span class="perk-sym">🏖️</span> Dunas y Playa</span>
+          </div>
+          <button id="btn-launch-buggy" class="hub-card-btn-action active-btn buggy-btn" onclick="event.stopPropagation(); if(window.gepiGame){ window.gepiGame.launchBuggyFromHub(); } else { window.location.href='Rally/beach_buggy_rally_dunas_resort_3d.html'; }">
+            <span>¡JUGAR AHORA!</span>
+            <span class="hub-btn-chevron">&gt;</span>
+          </button>
+        </div>
+      </article>
+
+      <!-- GAME 3: PARASAILING RESORT (PRÓXIMAMENTE) -->
+      <article class="hub-pano-card card-parasail locked-game" id="card-game-parasail">
+        <div class="hub-card-art-box">
+          <img src="Public/cards/art_parasail.jpg" alt="Parasailing Resort" class="hub-card-art-img" />
+          <div class="hub-card-status-badge locked">
+            <svg class="hub-lock-svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+            PRÓXIMAMENTE
+          </div>
+        </div>
+        <div class="hub-card-content">
+          <h2 class="hub-card-title">PARASAILING RESORT</h2>
+          <div class="hub-card-perks">
+            <span class="hub-perk-item"><span class="perk-sym">🗺️</span> Vista Aérea</span>
+            <span class="hub-perk-item"><span class="perk-sym">💍</span> Aros Dorados</span>
+            <span class="hub-perk-item"><span class="perk-sym">⭐</span> Bonos Resort</span>
+          </div>
+          <button class="hub-card-btn-action locked-btn" disabled>
+            <span>MUY PRONTO</span>
+            <svg class="hub-lock-btn-svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+          </button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- AERIAL CIRCUIT INSPECTION OVERVIEW SCREEN -->
+  <section id="screen-aerial" class="ui-screen hidden">
+    <div class="aerial-overlay-frame">
+      <!-- Top Aerial Header & Controls Bar -->
+      <header class="aerial-header-bar">
+        <div class="aerial-title-col">
+          <div class="aerial-badge-pill">🚁 MODO INSPECCIÓN 3D</div>
+          <h2 class="aerial-title">VISTA AÉREA DEL CIRCUITO COMPLETO</h2>
+          <p class="aerial-subtitle">Explora los 1800m de pista: islas, edificios, rampas y meta. Desplaza la barra o pulsa [W / S].</p>
+        </div>
+        <div class="aerial-top-actions">
+          <button type="button" id="btn-aerial-flyover" class="aerial-action-btn primary" title="Reproducir sobrevuelo continuo">
+            <span id="aerial-fly-icon">▶</span>
+            <span id="aerial-fly-txt">Vuelo Automático</span>
+          </button>
+          <button type="button" id="btn-toggle-dev-map" class="aerial-action-btn secondary map-btn" title="Abrir Mapa Referencial del Circuito (Tecla M)">
+            <span>🗺️</span>
+            <span>Mapa Referencial (DEV)</span>
+          </button>
+          <button type="button" id="btn-aerial-angle" class="aerial-action-btn secondary" title="Cambiar ángulo de cámara">
+            <span>📷</span>
+            <span id="aerial-angle-label">Dron 45°</span>
+          </button>
+          <button type="button" id="btn-aerial-exit" class="aerial-action-btn exit-btn" title="Volver al Menú Principal">
+            <span>✕ Salir</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Bottom Interactive Course Scrubber & Landmark Quick-Jumps -->
+      <div class="aerial-bottom-dock">
+        <div class="aerial-scrubber-wrap">
+          <div class="aerial-dist-readout">
+            <span>Posición en Pista:</span>
+            <strong id="aerial-dist-val">0 m</strong>
+            <span class="aerial-pct" id="aerial-pct-val">(0%)</span>
+          </div>
+          <input type="range" id="aerial-track-slider" min="0" max="1800" step="5" value="0" class="aerial-slider" />
+        </div>
+
+        <!-- Quick Jump Landmark Pills -->
+        <div class="aerial-landmarks-row" id="aerial-landmarks-row">
+          <button type="button" class="aerial-mark-pill active" data-z="0">🚩 Salida (0m)</button>
+          <button type="button" class="aerial-mark-pill" data-z="150">🏝️ Isla Lobby 1</button>
+          <button type="button" class="aerial-mark-pill" data-z="350">🏖️ Bahía Costa</button>
+          <button type="button" class="aerial-mark-pill" data-z="650">⚡ Rampas de Neón</button>
+          <button type="button" class="aerial-mark-pill" data-z="950">🏢 Edificio Triple</button>
+          <button type="button" class="aerial-mark-pill" data-z="1350">🌊 Dunas y Canales</button>
+          <button type="button" class="aerial-mark-pill" data-z="1800">🎡 Gran Ruleta Meta</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REFERENTIAL DEV CIRCUIT MAP MODAL (Temporary for track design & irregular island shaping) -->
+  <div id="dev-circuit-map-modal" class="dev-circuit-map-modal hidden">
+    <div class="dev-map-panel">
+      <!-- Map Panel Header -->
+      <header class="dev-map-header">
+        <div class="dev-map-title-box">
+          <div class="dev-map-tag">HERRAMIENTA REFERENCIAL DE DESARROLLO (TEMPORAL)</div>
+          <h2 class="dev-map-title">🗺️ MAPA TÁCTICO DEL CIRCUITO JETSKI (1800m)</h2>
+          <p class="dev-map-subtitle">Esquema con coordenadas exactas (Z metros y lateral X) para dar instrucciones y rediseñar las islas a formas orgánicas e irregulares.</p>
+        </div>
+        <div class="dev-map-header-actions">
+          <div class="dev-map-view-tabs">
+            <button type="button" class="dev-map-tab active" id="tab-map-schematic">Plano Esquemático 2D</button>
+            <button type="button" class="dev-map-tab" id="tab-map-data">Tabla de Coordenadas</button>
+          </div>
+          <button type="button" id="btn-close-dev-map" class="dev-map-close-btn" title="Cerrar Mapa (Tecla M o ESC)">✕ Cerrar</button>
+        </div>
+      </header>
+
+      <!-- View 1: Interactive Circuit Schematic Canvas -->
+      <div class="dev-map-body" id="dev-map-schematic-view">
+        <div class="dev-map-schematic-wrap">
+          <!-- Legend Bar -->
+          <div class="dev-map-legend-bar">
+            <span class="legend-item"><span class="legend-dot water"></span> Canal Central (30m)</span>
+            <span class="legend-item"><span class="legend-dot buoy-red"></span> Boyas Rojas (Izq)</span>
+            <span class="legend-item"><span class="legend-dot buoy-blue"></span> Boyas Azules (Der)</span>
+            <span class="legend-item"><span class="legend-dot island"></span> Islas (Redondas actuales)</span>
+            <span class="legend-item"><span class="legend-dot tower"></span> Rascacielos / GLB</span>
+            <span class="legend-item"><span class="legend-dot ramp"></span> ⚡ Rampas</span>
+            <span class="legend-item"><span class="legend-dot camera"></span> 🎯 Posición Actual</span>
+            <span class="dev-map-hint">💡 Haz clic en cualquier isla o punto del mapa para teletransportar la cámara 3D allí</span>
+          </div>
+
+          <!-- Scrollable High-Res SVG Track Schematic -->
+          <div class="dev-map-canvas-container" id="dev-map-canvas-container">
+            <svg id="dev-track-svg" class="dev-track-svg" viewBox="0 0 1000 3700" preserveAspectRatio="xMidYMin meet">
+              <!-- Dynamically populated by renderDevCircuitMap() -->
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- View 2: Reference Coordinate Table -->
+      <div class="dev-map-body hidden" id="dev-map-data-view">
+        <div class="dev-map-table-wrap">
+          <table class="dev-coord-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Distancia (Z)</th>
+                <th>Lateral (X)</th>
+                <th>Banda</th>
+                <th>Radio Actual</th>
+                <th>Edificios / Modelos Asignados</th>
+                <th>Acción de Inspección</th>
+              </tr>
+            </thead>
+            <tbody id="dev-islands-table-body">
+              <!-- Dynamically populated from this.generatedIslands -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Footer Info Bar -->
+      <footer class="dev-map-footer">
+        <div class="dev-map-foot-left">
+          <span>Longitud: <strong>1800 metros</strong></span>
+          <span class="foot-sep">·</span>
+          <span>Islas registradas: <strong id="dev-map-island-count">0</strong></span>
+          <span class="foot-sep">·</span>
+          <span>Canal de agua: <strong>30m (X: -15 a +15)</strong></span>
+          <span class="foot-sep">·</span>
+          <span>Atajo de teclado: <kbd>M</kbd></span>
+        </div>
+        <div class="dev-map-foot-right">
+          <button type="button" id="btn-copy-island-coords" class="dev-map-aux-btn">📋 Copiar Lista de Coordenadas</button>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- JETSKI START MENU SCREEN (Arcade Layout styled like image 2 with Gepiclub colors) -->
+  <section id="screen-menu" class="ui-screen hidden">
+    <div class="arcade-menu-wrapper">
+      <!-- 3D Arcade Title -->
+      <div class="arcade-title-group">
+        <h1 class="arcade-title-main">
+          <span class="arcade-word-gepi">GEPI</span><span class="arcade-word-club">CLUB</span>
+        </h1>
+        <div class="arcade-title-sub">JETSKI RUSH</div>
+        <div class="arcade-title-badge">3D ARCADE</div>
+      </div>
+
+      <!-- Subtitle Description -->
+      <p class="arcade-menu-desc">
+        -¡Acelera en las olas para cargar nitro, salta por rampas acrobáticas, recoge monedas de neón y gira la Gran Ruleta en la meta!-
+      </p>
+
+      <!-- Difficulty Selector (DIFICULTAD) -->
+      <div class="arcade-difficulty-group">
+        <span class="arcade-diff-label">DIFICULTAD</span>
+        <div class="arcade-diff-pills" id="arcade-diff-container">
+          <button type="button" class="arcade-diff-btn" data-diff="0.85">Fácil</button>
+          <button type="button" class="arcade-diff-btn active" data-diff="1.0">Normal</button>
+          <button type="button" class="arcade-diff-btn" data-diff="1.25">Difícil</button>
+        </div>
+      </div>
+
+      <!-- Juicy Main CTA Button -->
+      <button id="btn-start-race" class="arcade-cta-race-btn pulse-glow" onclick="if(window.gepiGame){ window.gepiGame.startCountdown(); } else if(window.__gepiInitError){ alert('Error 3D: ' + (window.__gepiInitError.message || window.__gepiInitError)); }">
+        <span>¡A CORRER!</span>
+      </button>
+
+      <!-- Bottom Floating Controls & Records Pill Bar (Image 2 style) -->
+      <div class="arcade-controls-bar">
+        <div class="ctrl-row-keys">
+          <span class="ctrl-pill"><kbd>W</kbd> / <kbd>↑</kbd> acelerar</span>
+          <span class="ctrl-sep">·</span>
+          <span class="ctrl-pill"><kbd>S</kbd> / <kbd>↓</kbd> frenar</span>
+          <span class="ctrl-sep">·</span>
+          <span class="ctrl-pill"><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd> girar</span>
+        </div>
+        <div class="ctrl-row-keys sub-keys">
+          <span class="ctrl-pill"><kbd>Espacio</kbd> nitro boost</span>
+          <span class="ctrl-sep">·</span>
+          <span class="ctrl-pill"><kbd>W / A / S / D</kbd> en el aire: acrobacias 360°</span>
+          <span class="ctrl-sep">·</span>
+          <button type="button" id="btn-menu-back-hub" class="ctrl-hub-link" title="Volver al Menú Principal">
+            <kbd>Esc</kbd> Menú
+          </button>
+        </div>
+        <div class="ctrl-hint-text">
+          Acelera en el agua y haz acrobacias para recargar nitro instantáneo. Mando y pantalla táctil compatibles.
+        </div>
+        <div class="ctrl-records-pill">
+          <span class="records-tag">Tus mejores récords:</span>
+          <span id="menu-records-val" class="records-val">Meta: 1800m · ¡Comienza una carrera para batir tu récord!</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COUNTDOWN OVERLAY -->
+  <div id="countdown-overlay" class="countdown-overlay hidden">
+    <div id="countdown-number" class="countdown-number">3</div>
+  </div>
+
+  <!-- ROULETTE SCREEN OVERLAY -->
+  <section id="screen-roulette" class="ui-screen hidden">
+    <div class="roulette-layout">
+      <div class="roulette-info-card">
+        <div class="roulette-brand-row">
+          <img src="Public/gepi-isotipo.png" alt="Gepiclub" class="mini-logo" />
+          <span class="modal-brand-tag">GEPI ARCADE VIP</span>
+        </div>
+        <h2>¡META ALCANZADA!</h2>
+        <p class="roulette-desc">La energía acumulada en tu recorrido se ha transferido a la Mega Ruleta Gepiclub.</p>
+
+        <div class="transferred-energy-box">
+          <div class="te-row">
+            <span>Monedas Rojas:</span>
+            <strong id="final-red-count" class="txt-red">0</strong>
+          </div>
+          <div class="te-row">
+            <span>Monedas Azules:</span>
+            <strong id="final-blue-count" class="txt-blue">0</strong>
+          </div>
+          <div class="te-bar-wrap">
+            <div id="final-energy-fill" class="te-bar-fill"></div>
+          </div>
+          <div class="te-total">
+            POTENCIA CARGADA: <strong id="final-energy-pct">100%</strong>
+          </div>
+        </div>
+
+        <button id="btn-spin-roulette" class="cta-btn spin-btn pulse-glow">
+          <svg class="spin-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+          <span>¡GIRAR CON ENERGÍA!</span>
+          <small>MANTÉN O HAZ CLIC PARA DESCARGAR POTENCIA</small>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRIZE CELEBRATION MODAL -->
+  <section id="screen-prize" class="ui-screen hidden">
+    <div class="prize-modal-card">
+      <div class="prize-confetti-badge">
+        <svg class="trophy-svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h12v3H6zm10 4V5H8v1a5 5 0 0 0 4 4.9V13H9v2h6v-2h-3v-2.1A5 5 0 0 0 16 6zm4 0h-2v3a7 7 0 0 1-4 6.3V17h4v2H6v-2h4v-1.7A7 7 0 0 1 4 9V6H2v5a9 9 0 0 0 8 8.9V22h4v-2.1A9 9 0 0 0 22 11V6z"/></svg>
+        <span>¡FELICIDADES GANADOR!</span>
+        <svg class="trophy-svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h12v3H6zm10 4V5H8v1a5 5 0 0 0 4 4.9V13H9v2h6v-2h-3v-2.1A5 5 0 0 0 16 6zm4 0h-2v3a7 7 0 0 1-4 6.3V17h4v2H6v-2h4v-1.7A7 7 0 0 1 4 9V6H2v5a9 9 0 0 0 8 8.9V22h4v-2.1A9 9 0 0 0 22 11V6z"/></svg>
+      </div>
+      <div class="prize-brand-row">
+        <img src="Public/gepi-isotipo.png" alt="Gepiclub" class="prize-logo" />
+        <span class="prize-brand-text">GEPI<span class="txt-solid-blue">CLUB</span></span>
+      </div>
+      <h3 class="prize-pre">TU ENERGÍA EN EL MAR TE HIZO GANAR:</h3>
+      <div id="prize-icon-display" class="prize-icon-display">
+        <svg class="prize-svg-large" viewBox="0 0 48 48" fill="none"><rect x="8" y="4" width="32" height="40" rx="3" stroke="#ffd700" stroke-width="3" fill="#142b4d"/><path d="M18 44v-8h12v8M16 12h.02M32 12h.02M16 20h.02M32 20h.02M16 28h.02M32 28h.02M24 12h.02M24 20h.02M24 28h.02" stroke="#ffd700" stroke-width="3.5" stroke-linecap="round"/></svg>
+      </div>
+      <h1 id="prize-title-display" class="prize-title-display">3 DÍAS Y 2 NOCHES EN UN HOTEL</h1>
+      <p id="prize-desc-display" class="prize-desc-display">Presenta esta pantalla al operador de Gepiclub para reclamar tu premio oficial.</p>
+
+      <div class="prize-actions">
+        <button id="btn-play-again" class="cta-btn solid-red">
+          <svg class="btn-action-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          <span>JUGAR DE NUEVO</span>
+        </button>
+        <button id="btn-prize-hub" class="cta-btn solid-blue">
+          <svg class="btn-action-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>MENÚ DE JUEGOS</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECRET OPERATOR / ADMIN PANEL (F2 or 3 clicks on Logo) -->
+  <aside id="operator-modal" class="operator-modal hidden">
+    <div class="operator-card">
+      <div class="operator-header">
+        <div>
+          <h3><svg class="op-gear-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> PANEL DE OPERADOR — GEPICLUB</h3>
+          <p>Configura el premio ganador de la ruleta de forma discreta (Atajo: <strong>F2</strong> o <strong>Alt+O</strong> o 3 clics en el logo).</p>
+        </div>
+        <button id="btn-close-operator" class="close-op-btn">✕</button>
+      </div>
+
+      <div class="operator-body">
+        <div class="op-section">
+          <label class="op-label"><svg class="op-target-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> Modo de Selección de Premio:</label>
+          <div class="op-mode-selector">
+            <label class="op-radio-card">
+              <input type="radio" name="op-mode" value="forced" checked />
+              <div>
+                <strong>Forzar Premio Específico (Control Operador)</strong>
+                <small>La ruleta girará con física real y se detendrá exactamente en el premio elegido abajo.</small>
+              </div>
+            </label>
+            <label class="op-radio-card">
+              <input type="radio" name="op-mode" value="weighted" />
+              <div>
+                <strong>Probabilidad Automática por Pesos</strong>
+                <small>El sistema elige según el porcentaje de probabilidad configurado en cada casilla.</small>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="op-section">
+          <label class="op-label">🏆 Selecciona el Premio que Saldrá en el Próximo Giro (Atajos Rápidos: Teclas 1 al 8 con panel abierto):</label>
+          <div id="op-prizes-list" class="op-prizes-list">
+            <!-- Populated dynamically by JS -->
+          </div>
+        </div>
+
+        <div class="op-section op-settings-grid">
+          <div>
+            <label class="op-label">📏 Duración de la Pista (metros):</label>
+            <input type="number" id="op-track-length" class="op-input" value="1800" min="400" max="5000" step="100" />
+          </div>
+          <div>
+            <label class="op-label">🚤 Velocidad Base del JetSki:</label>
+            <select id="op-game-difficulty" class="op-input">
+              <option value="0.85">Relajada (Familiar / Eventos)</option>
+              <option value="1.0" selected>Normal (Arcade Pro)</option>
+              <option value="1.25">Extrema (Alta Velocidad)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="operator-footer">
+        <span id="op-status-msg" class="op-status-msg">✓ Configuración guardada en tiempo real</span>
+        <div class="op-footer-btns">
+          <button id="btn-reset-op" class="op-btn-secondary">Restaurar Premios Base</button>
+          <button id="btn-save-op" class="op-btn-primary">Guardar y Cerrar (ESC)</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <script type="module" src="js/main.js?v=2.7.7"></script>
+</body>
+</html>
