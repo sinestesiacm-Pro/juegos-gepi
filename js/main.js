@@ -1843,15 +1843,11 @@ class GepiclubJetSkiGame {
         }
       };
 
-      // 3. Cargar modelos PBR de Edificios de forma priorizada, determinista y escalonada por frames
+      // 3. Cargar modelos PBR de Edificios limpios (Resort Miami Art Déco + Torres con Lobby)
       const buildingDefs = [
-        { id: 'edificioconlobby', file: 'models/edificioconlobby.glb', altFile: 'models/edificioconlobbytripo_pbr_model_0ff906c8-2721-4530-b5d7-cec8311e76eb_meshopt.glb', weight: 5, priority: 1 },
+        { id: 'resort_miami', file: 'models/resort_miami.glb', weight: 6, priority: 1 },
         { id: 'edificioconlobbyblanco', file: 'models/edificioconlobbyblanco.glb', altFile: 'models/edificioconlobbyblancotripo_pbr_model_dcf00fc3-60fb-4668-9749-6bb98d001a0a_meshopt.glb', weight: 5, priority: 1 },
-        { id: 'edificio1', file: 'models/edificio1.glb', weight: 4, priority: 1 },
-        { id: 'edificio2', file: 'models/edificio2.glb', weight: 4, priority: 2 },
-        { id: 'edificio3', file: 'models/edificio3.glb', weight: 4, priority: 2 },
-        { id: 'edificio4', file: 'models/edificio4.glb', weight: 4, priority: 2 },
-        { id: 'edificiotriple', file: 'models/edificiotriple.glb', altFile: 'models/edificio5.glb', weight: 1, isSpecial: true, priority: 2 }
+        { id: 'edificioconlobby', file: 'models/edificioconlobby.glb', altFile: 'models/edificioconlobbytripo_pbr_model_0ff906c8-2721-4530-b5d7-cec8311e76eb_meshopt.glb', weight: 4, priority: 2 }
       ];
 
       const loadBuilding = async (bDef) => {
@@ -1870,7 +1866,7 @@ class GepiclubJetSkiGame {
 
           bScene.traverse(child => {
             if (child.isMesh) {
-              // Disabling shadow pass on 1,000,000-vertex distant island towers eliminates 45M+ shadow vertices/frame
+              // Disabling shadow pass on distant island towers eliminates 45M+ shadow vertices/frame
               child.castShadow = false;
               child.receiveShadow = false;
               if (child.material) {
@@ -1912,8 +1908,8 @@ class GepiclubJetSkiGame {
                   item.group.remove(item.group.children[0]);
                 }
                 const bModel = wrapper.clone(true);
-                const bHeight = item.slotDef.height || 60;
-                bModel.scale.set(bHeight, bHeight, bHeight);
+                const bScale = item.slotDef.scale || (item.slotDef.height ? item.slotDef.height : 60);
+                bModel.scale.set(bScale, bScale, bScale);
                 bModel.position.set(0, 2.8, 0);
                 bModel.rotation.y = item.slotDef.rotY || 0;
                 item.group.add(bModel);
@@ -1928,7 +1924,7 @@ class GepiclubJetSkiGame {
       };
 
       // Load Priority 1 skyline models & palms sequentially with frame yields so UI stays 60fps
-      const p1 = ['edificioconlobby', 'edificioconlobbyblanco', 'edificio1'];
+      const p1 = ['resort_miami', 'edificioconlobbyblanco'];
       for (const bDef of buildingDefs.filter(b => p1.includes(b.id))) {
         await loadBuilding(bDef);
       }
@@ -2722,62 +2718,65 @@ class GepiclubJetSkiGame {
       {
         radius: 40,
         towers: [
-          { modelId: 'edificioconlobby', x: -5, z: -3, height: 68, rotY: 0 },
-          { modelId: 'edificio1', x: 11, z: 6, height: 72, rotY: Math.PI / 2 },
-          { modelId: 'procedural', x: -3, z: 12, height: 48, rotY: 0, colorHex: 0xebf2f8, neonHex: 0x00f0ff }
+          { modelId: 'resort_miami', x: 0, z: -4, scale: 1.35, rotY: 0.15 },
+          { modelId: 'edificioconlobbyblanco', x: 12, z: 6, height: 64, rotY: Math.PI / 2 },
+          { modelId: 'procedural', x: -11, z: 8, height: 50, rotY: 0, colorHex: 0xebf2f8, neonHex: 0x00f0ff }
         ]
       },
       {
         radius: 44,
         towers: [
-          { modelId: 'edificioconlobbyblanco', x: 4, z: -5, height: 66, rotY: -Math.PI / 2 },
-          { modelId: 'edificio2', x: -10, z: 6, height: 62, rotY: 0 },
-          { modelId: 'procedural', x: 10, z: 11, height: 52, rotY: Math.PI / 4, colorHex: 0xdce8f4, neonHex: 0xff007f }
+          { modelId: 'artdeco', x: 4, z: -5, height: 68, rotY: -Math.PI / 4, colorHex: 0xfff0e4, accentHex: 0x00b4d8, neonHex: 0xff007f },
+          { modelId: 'resort_miami', x: -6, z: 8, scale: 1.25, rotY: Math.PI / 3 },
+          { modelId: 'edificioconlobby', x: 10, z: 10, height: 60, rotY: 0 }
         ]
       },
       {
         radius: 38,
         towers: [
-          { modelId: 'edificio3', x: -4, z: -4, height: 65, rotY: 0 },
-          { modelId: 'edificio4', x: 9, z: 7, height: 60, rotY: Math.PI / 2 },
-          { modelId: 'procedural', x: -5, z: 10, height: 46, rotY: 0, colorHex: 0xf4f8fc, neonHex: 0x3894D1 }
+          { modelId: 'resort_miami', x: -4, z: -3, scale: 1.35, rotY: -0.2 },
+          { modelId: 'artdeco', x: 10, z: 6, height: 62, rotY: Math.PI / 2, colorHex: 0xf5f7fa, accentHex: 0xffb703, neonHex: 0x00f0ff },
+          { modelId: 'procedural', x: -8, z: 10, height: 48, rotY: 0, colorHex: 0xf4f8fc, neonHex: 0x3894D1 }
         ]
       },
       {
         radius: 46,
         towers: [
-          { modelId: 'edificiotriple', x: 0, z: 0, height: 76, rotY: 0, isSpecial: true },
-          { modelId: 'edificioconlobby', x: -14, z: 8, height: 58, rotY: Math.PI }
+          { modelId: 'edificioconlobbyblanco', x: -8, z: -4, height: 68, rotY: 0 },
+          { modelId: 'resort_miami', x: 6, z: 6, scale: 1.35, rotY: Math.PI },
+          { modelId: 'artdeco', x: -2, z: 12, height: 56, rotY: Math.PI / 4, colorHex: 0xfff4e6, accentHex: 0x06d6a0, neonHex: 0x00ffaa }
         ]
       },
       {
         radius: 40,
         towers: [
-          { modelId: 'edificioconlobbyblanco', x: -4, z: -4, height: 68, rotY: 0 },
-          { modelId: 'edificio1', x: 10, z: 6, height: 70, rotY: Math.PI / 2 },
-          { modelId: 'procedural', x: 2, z: 12, height: 50, rotY: 0, colorHex: 0xebf2f8, neonHex: 0x00ffaa }
+          { modelId: 'artdeco', x: -4, z: -4, height: 66, rotY: 0, colorHex: 0xfdfbf7, accentHex: 0x118ab2, neonHex: 0xffd166 },
+          { modelId: 'resort_miami', x: 10, z: 6, scale: 1.30, rotY: -Math.PI / 2 },
+          { modelId: 'edificioconlobby', x: 2, z: 12, height: 58, rotY: 0 }
         ]
       },
       {
         radius: 38,
         towers: [
-          { modelId: 'edificio2', x: 3, z: -4, height: 64, rotY: -Math.PI / 2 },
-          { modelId: 'edificio3', x: -8, z: 6, height: 62, rotY: 0 },
-          { modelId: 'procedural', x: 8, z: 10, height: 50, rotY: 0, colorHex: 0xebf2f8, neonHex: 0x9d00ff }
+          { modelId: 'resort_miami', x: 3, z: -4, scale: 1.35, rotY: Math.PI / 4 },
+          { modelId: 'edificioconlobbyblanco', x: -9, z: 6, height: 64, rotY: 0 },
+          { modelId: 'artdeco', x: 8, z: 10, height: 52, rotY: 0, colorHex: 0xffebe6, accentHex: 0xff6b6b, neonHex: 0x9d00ff }
         ]
       },
       {
         radius: 40,
         towers: [
           { modelId: 'edificioconlobby', x: -4, z: -3, height: 65, rotY: 0 },
-          { modelId: 'edificio4', x: 9, z: 6, height: 60, rotY: Math.PI / 2 }
+          { modelId: 'resort_miami', x: 9, z: 6, scale: 1.35, rotY: Math.PI / 2 },
+          { modelId: 'procedural', x: -5, z: 11, height: 50, rotY: 0, colorHex: 0xebf2f8, neonHex: 0x00ffaa }
         ]
       },
       {
         radius: 44,
         towers: [
-          { modelId: 'edificiotriple', x: 0, z: 0, height: 76, rotY: 0, isSpecial: true },
-          { modelId: 'edificioconlobbyblanco', x: 12, z: 8, height: 64, rotY: -Math.PI / 2 }
+          { modelId: 'artdeco', x: 0, z: -3, height: 72, rotY: 0, colorHex: 0xfff5ea, accentHex: 0x2ec4b6, neonHex: 0x00f0ff },
+          { modelId: 'resort_miami', x: 12, z: 8, scale: 1.35, rotY: -Math.PI / 2 },
+          { modelId: 'edificioconlobbyblanco', x: -12, z: 6, height: 62, rotY: Math.PI }
         ]
       }
     ];
@@ -2845,6 +2844,80 @@ class GepiclubJetSkiGame {
     this.miamiSkyline.push({ neonMat, baseColor: neonColor });
   }
 
+  createArtDecoTowerMesh(towerGroup, slotDef) {
+    const group = new THREE.Group();
+    const baseW = slotDef.width || 14;
+    const baseD = slotDef.depth || 14;
+    const totalH = slotDef.height || 62;
+    const wallColor = slotDef.colorHex || 0xffeedb;
+    const accentColor = slotDef.accentHex || 0x24d8d8;
+    const neonColor = slotDef.neonHex || 0xffd700;
+
+    const wallMat = new THREE.MeshStandardMaterial({
+      color: wallColor,
+      roughness: 0.45,
+      metalness: 0.15
+    });
+
+    const accentMat = new THREE.MeshStandardMaterial({
+      color: accentColor,
+      roughness: 0.25,
+      metalness: 0.45
+    });
+
+    const neonMat = new THREE.MeshStandardMaterial({
+      color: neonColor,
+      emissive: neonColor,
+      emissiveIntensity: 0.28,
+      roughness: 0.2
+    });
+
+    // Tier 1: Base podium
+    const h1 = totalH * 0.48;
+    const b1 = new THREE.Mesh(new THREE.BoxGeometry(baseW, h1, baseD), wallMat);
+    b1.position.y = h1 / 2 + 2.8;
+    group.add(b1);
+
+    // Vertical Art Deco architectural fluting
+    const finGeo = new THREE.BoxGeometry(0.35, h1 * 0.95, 0.35);
+    for (let f = -1; f <= 1; f += 2) {
+      const finF = new THREE.Mesh(finGeo, accentMat);
+      finF.position.set(f * (baseW * 0.32), h1 / 2 + 2.8, baseD / 2 + 0.1);
+      const finB = new THREE.Mesh(finGeo, accentMat);
+      finB.position.set(f * (baseW * 0.32), h1 / 2 + 2.8, -baseD / 2 - 0.1);
+      group.add(finF, finB);
+    }
+
+    // Tier 2: Stepped middle section
+    const w2 = baseW * 0.78;
+    const d2 = baseD * 0.78;
+    const h2 = totalH * 0.32;
+    const y2 = h1 + 2.8 + h2 / 2;
+    const b2 = new THREE.Mesh(new THREE.BoxGeometry(w2, h2, d2), wallMat);
+    b2.position.y = y2;
+    group.add(b2);
+
+    // Tier 3: Stepped upper crown
+    const w3 = w2 * 0.68;
+    const d3 = d2 * 0.68;
+    const h3 = totalH * 0.20;
+    const y3 = h1 + h2 + 2.8 + h3 / 2;
+    const b3 = new THREE.Mesh(new THREE.BoxGeometry(w3, h3, d3), accentMat);
+    b3.position.y = y3;
+    group.add(b3);
+
+    // Spire
+    const spireH = totalH * 0.22;
+    const spireGeo = new THREE.ConeGeometry(w3 * 0.48, spireH, 4);
+    spireGeo.rotateY(Math.PI / 4);
+    const spire = new THREE.Mesh(spireGeo, neonMat);
+    spire.position.y = h1 + h2 + h3 + 2.8 + spireH / 2;
+    group.add(spire);
+
+    towerGroup.add(group);
+    this.miamiSkyline.push({ neonMat, baseColor: neonColor });
+  }
+
   spawnMiamiSkylineIsland(x, z, islandIdx = 0) {
     const island = new THREE.Group();
     const cfg = this.getDefinedIslandConfig(islandIdx);
@@ -2894,25 +2967,31 @@ class GepiclubJetSkiGame {
       const towerGroup = new THREE.Group();
       towerGroup.position.set(slotDef.x, 0, slotDef.z);
 
-      if (slotDef.modelId !== 'procedural') {
+      if (slotDef.modelId === 'artdeco') {
+        this.createArtDecoTowerMesh(towerGroup, slotDef);
+      } else if (slotDef.modelId === 'procedural') {
+        this.createProceduralTowerMesh(towerGroup, slotDef);
+      } else {
         const template = this.buildingTemplatesMap.get(slotDef.modelId);
         if (template) {
           const bModel = template.clone(true);
-          const bHeight = slotDef.height || 64;
-          bModel.scale.set(bHeight, bHeight, bHeight);
+          const bScale = slotDef.scale || (slotDef.height ? slotDef.height : 64);
+          bModel.scale.set(bScale, bScale, bScale);
           bModel.position.set(0, 2.8, 0);
           bModel.rotation.y = slotDef.rotY || 0;
           towerGroup.add(bModel);
         } else {
           // Render instant matching procedural silhouette while GLB finishes decoding
-          this.createProceduralTowerMesh(towerGroup, slotDef);
+          if (slotDef.modelId === 'resort_miami') {
+            this.createArtDecoTowerMesh(towerGroup, slotDef);
+          } else {
+            this.createProceduralTowerMesh(towerGroup, slotDef);
+          }
           if (!this.pendingTowersByModelId.has(slotDef.modelId)) {
             this.pendingTowersByModelId.set(slotDef.modelId, []);
           }
           this.pendingTowersByModelId.get(slotDef.modelId).push({ group: towerGroup, slotDef });
         }
-      } else {
-        this.createProceduralTowerMesh(towerGroup, slotDef);
       }
 
       island.add(towerGroup);
