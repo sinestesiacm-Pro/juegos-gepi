@@ -662,10 +662,11 @@ class GepiclubJetSkiGame {
       btnHubAudio.addEventListener('click', (e) => {
         if (e) e.preventDefault();
         const muted = this.sound.toggleMute();
+        const iconClass = muted ? 'ph-duotone ph-speaker-slash' : 'ph-duotone ph-speaker-high';
         const icon = document.getElementById('hub-audio-icon');
-        if (icon) icon.textContent = muted ? '🔇' : '🔊';
-        const btnAudio = document.getElementById('btn-audio');
-        if (btnAudio) btnAudio.textContent = muted ? '🔇' : '🔊';
+        if (icon) icon.className = iconClass;
+        const btnAudioIcon = document.querySelector('#btn-audio i');
+        if (btnAudioIcon) btnAudioIcon.className = iconClass;
       });
     }
 
@@ -747,7 +748,11 @@ class GepiclubJetSkiGame {
     const btnAudio = document.getElementById('btn-audio');
     btnAudio.addEventListener('click', () => {
       const muted = this.sound.toggleMute();
-      btnAudio.textContent = muted ? '🔇' : '🔊';
+      const iconClass = muted ? 'ph-duotone ph-speaker-slash' : 'ph-duotone ph-speaker-high';
+      const btnAudioIcon = btnAudio.querySelector('i');
+      if (btnAudioIcon) btnAudioIcon.className = iconClass;
+      const hubIcon = document.getElementById('hub-audio-icon');
+      if (hubIcon) hubIcon.className = iconClass;
     });
 
     document.getElementById('btn-fullscreen').addEventListener('click', () => {
@@ -1993,22 +1998,23 @@ class GepiclubJetSkiGame {
     skiContainer.rotation.y = Math.PI;
     skiContainer.add(customScene);
 
-    // Ocultar el casco procedural anterior
+    // Ocultar el casco, manillar y piloto procedural anterior (el modelo PBR jetski.glb ya incluye su propio piloto 3D)
+    this.hasCustomJetSki = true;
     if (this.jetSki.hullGroup) {
       this.jetSki.hullGroup.visible = false;
     }
-    // Ocultar manillar procedural si la moto PBR ya tiene su propia columna y mando
     if (this.jetSki.steeringPivot) {
       this.jetSki.steeringPivot.visible = false;
+    }
+    if (this.jetSki.riderGroup) {
+      this.jetSki.riderGroup.visible = false;
+    }
+    if (this.jetSki.nozzlePivot) {
+      this.jetSki.nozzlePivot.visible = false;
     }
 
     this.jetSki.root.add(skiContainer);
     this.customJetSkiGroup = skiContainer;
-
-    // Alinear al piloto sobre el nuevo asiento ergonómico
-    if (this.jetSki.riderGroup) {
-      this.jetSki.riderGroup.position.set(0, 0.70, 0.35);
-    }
   }
 
   populateIslandPalms(islandPalmsGroup, islandRadius, palmCount) {
@@ -4392,28 +4398,30 @@ class GepiclubJetSkiGame {
         this.jetSki.root.rotation.y = THREE.MathUtils.lerp(this.jetSki.root.rotation.y, targetRotY, dt * 6.5);
         this.jetSki.root.rotation.z = Math.sin(elapsedTime * 1.5) * 0.035;
 
-        // El personaje debe verse de frente en el menu con sutil flotabilidad
+        // Solo mostrar piloto procedural si aún no ha cargado el modelo PBR jetski.glb
         if (this.jetSki.riderGroup) {
-          this.jetSki.riderGroup.visible = true;
-          this.jetSki.riderGroup.position.y = 0.94 - Math.abs(Math.sin(elapsedTime * 2.5)) * 0.015;
+          this.jetSki.riderGroup.visible = !this.hasCustomJetSki;
+          if (!this.hasCustomJetSki) {
+            this.jetSki.riderGroup.position.y = 0.94 - Math.abs(Math.sin(elapsedTime * 2.5)) * 0.015;
+          }
         }
       }
 
       // Cámara alejada y angulada para que las 3 tarjetas del menú no tapen al personaje
       const targetCamPos = this.hubTurningToRace 
         ? new THREE.Vector3(0, 3.8, 8.8)
-        : new THREE.Vector3(0, 3.4, 9.2);
+        : new THREE.Vector3(0, 3.3, 9.6);
       const targetLookAt = this.hubTurningToRace
         ? new THREE.Vector3(0, 1.45, -4.0)
-        : new THREE.Vector3(0, 1.25, 0.2);
+        : new THREE.Vector3(0, 1.85, 0.2);
 
       this.camera.position.lerp(targetCamPos, dt * 5);
-      this._hubLookAt = this._hubLookAt || new THREE.Vector3(0, 1.25, 0.2);
+      this._hubLookAt = this._hubLookAt || new THREE.Vector3(0, 1.85, 0.2);
       this._hubLookAt.lerp(targetLookAt, dt * 5);
       this.camera.lookAt(this._hubLookAt);
     } else if (this.state === STATE.MENU || this.state === STATE.COUNTDOWN) {
       if (this.jetSki && this.jetSki.riderGroup) {
-        this.jetSki.riderGroup.visible = true;
+        this.jetSki.riderGroup.visible = !this.hasCustomJetSki;
       }
       const menuWaterY = getWaveHeightAt(0, 0, elapsedTime);
       const menuBowY = getWaveHeightAt(0, -1.4, elapsedTime);
